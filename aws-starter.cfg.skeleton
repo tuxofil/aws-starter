@@ -1,0 +1,95 @@
+##----------------------------------------------------------------------
+## Example configuration file for the amazon_starter.py tool
+##----------------------------------------------------------------------
+
+##----------------------------------------------------------------------
+## Common configuration section
+
+[main]
+
+## Amazon AWS API access requisites
+## Mandatory options. No default values.
+access_key_id = ***
+secret_access_key = ***
+
+## Amazon AWS region name to launch instances into
+## Mandatory option. No default value.
+region = us-west-2
+
+## Path to SSH configuration file which will used during accessing
+## instances with SSH and SCP tools.
+## No default value.
+#ssh_config = .ssh/config
+
+## Script which will be executed on the local side after
+## the all instances become ready.
+## Before execution next macros in the script will be
+## substituted with actual instance IP addresses:
+##  {{SSH:nodename}} -> ssh -F ssh_config_path node_ip
+## No default value.
+#super_script = scripts/main.sh
+
+## Where the stdout and stderr of the super script will be redirected to.
+## No default value.
+#super_log = logs/main.log
+
+## The options below will be used only in case when corresponding option
+## in per-instance configuration section is not set.
+
+## ID of a base Amazon Machine Instance which will
+## used to start new instances
+## No default value.
+#image_id = ami-***
+
+## ID of a network which will be used to include new instances into
+## No default value.
+#subnet_id = subnet-***
+
+## Maximum time (in minutes) to wait until new instance will be started.
+## Default value is 120 (two minutes).
+max_wait_time = 120
+
+## Path to script which will be executed immediately after the very
+## first instance start
+## No default value.
+#script = scripts/apt-get-update.sh
+
+##----------------------------------------------------------------------
+## Per-instance configuration sections
+
+[node1]
+
+## Instance type.
+## Default is t1.micro
+instance_type = t1.micro
+
+## ID of a base Amazon Machine Instance which will
+## used to start new instances
+## When not defined, value of corresponding option from 'main'
+## section will be tried.
+## No default value.
+image_id = ami-***
+
+## ID of a network which will be used to include new instances into
+## When not defined, value of corresponding option from 'main'
+## section will be tried.
+## No default value.
+subnet_id = subnet-***
+
+## Maximum time (in minutes) to wait until new instance will be started.
+## When not defined, value of corresponding option from 'main'
+## section will be tried.
+## Default value is 120 (two minutes).
+#max_wait_time = 120
+
+## Path to script which will be executed immediately after the very
+## first instance start
+## When not defined, value of corresponding option from 'main'
+## section will be tried.
+## No default value.
+#script = scripts/apt-get-update.sh
+
+## If a file path defined, all output of the script above will be
+## redirected to the file.
+## No default value.
+#script_log = logs/node1.log

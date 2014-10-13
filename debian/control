@@ -1,0 +1,17 @@
+Source: aws-starter
+Section: utils
+Priority: extra
+Maintainer: Aleksey Morarash <aleksey.morarash@gmail.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.3
+Homepage: https://github.com/tuxofil/aws-starter
+Vcs-Browser: https://github.com/tuxofil/aws-starter
+Vcs-Git: https://github.com/tuxofil/aws-starter.git
+
+Package: aws-starter
+Architecture: all
+Depends: python, python-boto, openssh-client
+Description: Automation tool for Amazon AWS
+ Automates creation of a set of Amazon instances,
+ do some work with them and terminate them after
+ work is done.
