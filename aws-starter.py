@@ -468,7 +468,8 @@ def substitute_macros(infile, outfile, ssh_config):
     real values and write it to the outfile.
 
     Next macroses will be substituted:
-     - {{SSH|nodename}} -> "ssh node_ip" or "ssh -F ssh_config node_ip".
+     - {{SSH|nodename}} -> "ssh node_ip" or "ssh -F ssh_config node_ip";
+     - {{IP|nodename}} -> node_ip.
 
     :param infile: path to super script template.
     :type infile: string
@@ -490,6 +491,9 @@ def substitute_macros(infile, outfile, ssh_config):
             replacement = \
                 'ssh %s' % instance['ip_address']
         body = body.replace(('{{SSH|%s}}' % instance_name), replacement)
+        # replace {{IP|nodename}} macros
+        body = body.replace(('{{IP|%s}}' % instance_name),
+                            instance['ip_address'])
     with open(outfile, 'w') as fdescr:
         fdescr.write(body)
     os.chmod(outfile, 0755)
