@@ -496,7 +496,8 @@ def substitute_macros(infile, outfile, ssh_config):
     Next macroses will be substituted:
      - {{SSH|nodename}} -> "ssh node_ip" or "ssh -F ssh_config node_ip";
      - {{SCP}} -> "scp" or "scp -F ssh_config";
-     - {{IP|nodename}} -> node_ip.
+     - {{PRIV_IP|nodename}} -> instance_private_ip;
+     - {{IP|nodename}} -> instance_public_ip.
 
     :param infile: path to super script template.
     :type infile: string
@@ -524,6 +525,9 @@ def substitute_macros(infile, outfile, ssh_config):
         else:
             replacement = 'scp'
         body = body.replace('{{SCP}}', replacement)
+        # replace {{PRIV_IP|nodename}} macros
+        body = body.replace(('{{PRIV_IP|%s}}' % instance_name),
+                            instance['private_ip_address'])
         # replace {{IP|nodename}} macros
         body = body.replace(('{{IP|%s}}' % instance_name),
                             instance['ip_address'])
