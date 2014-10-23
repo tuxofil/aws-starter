@@ -79,6 +79,12 @@ image_id = ami-***
 ## No default value.
 subnet_id = subnet-***
 
+## Private IP address which will be assigned with the instance.
+## When no address is set, it will be selected automatically
+## from the subnet.
+## No default value.
+#private_ip = 10.0.0.10
+
 ## Maximum time (in minutes) to wait until new instance will be started.
 ## When not defined, value of corresponding option from 'main'
 ## section will be tried.

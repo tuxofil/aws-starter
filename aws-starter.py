@@ -65,7 +65,7 @@ def connect():
 
 def launch(instance_name, instance_type, image_id, subnet_id,
            max_wait_time = None, script = None, script_log = None,
-           ssh_config = None):
+           ssh_config = None, private_ip = None):
     """
     Launch a new instance.
     On success return tuple of an instance ID and instance public IP.
@@ -90,6 +90,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     :type script_log: string or NoneType
     :param ssh_config: path to SSH config file
     :type ssh_config: string or NoneType
+    :param private_ip: private IP to assign with the instance.
+    :type private_ip: string or NoneType
     :rtype: (string, string) or NoneType
     """
     global LOGGER
@@ -101,7 +103,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     reservation = connection.run_instances(
         image_id = image_id,
         instance_type = instance_type,
-        subnet_id = subnet_id)
+        subnet_id = subnet_id,
+        private_ip_address = private_ip)
     instance = reservation.instances[0]
     instance_id = instance.id
     INSTANCES[instance_name]['instance_id'] = instance_id
@@ -419,6 +422,7 @@ def main():
         subnet_id = getOrNone(config, section, 'subnet_id')
         if not subnet_id:
             subnet_id = base_subnet_id
+        private_ip = getOrNone(config, section, 'private_ip')
         max_wait_time = getOrNone(config, section, 'max_wait_time')
         if not max_wait_time:
             max_wait_time = base_max_wait_time
@@ -434,7 +438,8 @@ def main():
              'max_wait_time': max_wait_time,
              'script': script,
              'script_log': script_log,
-             'ssh_config': ssh_config}
+             'ssh_config': ssh_config,
+             'requested_private_ip': private_ip}
     LOGGER.info('MAIN> start instances...')
     threads = []
     for instance_name in INSTANCES:
@@ -444,7 +449,8 @@ def main():
             args = [instance_name, args['instance_type'],
                     args['image_id'], args['subnet_id'],
                     args['max_wait_time'], args['script'],
-                    args['script_log'], args['ssh_config']])
+                    args['script_log'], args['ssh_config'],
+                    args['requested_private_ip']])
         thread.start()
         threads.append(thread)
     LOGGER.info('MAIN> wait for the threads...')
