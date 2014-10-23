@@ -464,12 +464,25 @@ def main():
 
 def substitute_macros(infile, outfile, ssh_config):
     """
+    Take a super script template from infile, substitute macros with
+    real values and write it to the outfile.
+
+    Next macroses will be substituted:
+     - {{SSH|nodename}} -> "ssh node_ip" or "ssh -F ssh_config node_ip".
+
+    :param infile: path to super script template.
+    :type infile: string
+    :param outfile: path to final super script.
+    :type outfile: string
+    :param ssh_config: path to SSH config.
+    :type ssh_config: string or NoneType
     """
     global INSTANCES
     with open(infile, 'r') as fdescr:
         body = fdescr.read()
     for instance_name in INSTANCES:
         instance = INSTANCES[instance_name]
+        # replace {{SSH|nodename}} macros
         if ssh_config is not None:
             replacement = \
                 'ssh -F %s %s' % (ssh_config, instance['ip_address'])
