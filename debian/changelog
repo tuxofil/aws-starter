@@ -1,10 +1,13 @@
-aws-starter (0.3.0) unstable; urgency=low
+aws-starter (0.4.0) unstable; urgency=low
 
   * fix in-code docs;
+  * print instance addresses table before super script;
+  * add ability to manually define instance private IP;
+  * add substitution of {{PRIV_IP|nodename}} macro in super script;
   * add substitution of {{IP|nodename}} macro in super script;
   * add substitution of {{SCP}} macro in super script.
 
- -- Aleksey Morarash <aleksey.morarash@gmail.com>  Thu, 23 Oct 2014 23:03:00 +0300
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Fri, 24 Oct 2014 00:46:00 +0300
 
 aws-starter (0.1.0) unstable; urgency=low
 
