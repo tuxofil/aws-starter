@@ -131,6 +131,19 @@ def launch(instance_name, instance_type, image_id, subnet_id,
             'launched instance %s is not found',
             instance_id)
         return None
+    # look for a private IP address
+    private_ip_address = instances[0].private_ip_address
+    if private_ip_address is None:
+        LOGGER.error(
+            'failed to get private IP address for instance %s',
+            instance_id)
+        return None
+    private_ip_address = str(private_ip_address)  # dispose of unicode string
+    INSTANCES[instance_name]['private_ip_address'] = private_ip_address
+    LOGGER.info(
+        'instance %s has private IP %s',
+        instance_id, private_ip_address)
+    # look for a public IP address
     ip_address = instances[0].ip_address
     if ip_address is None:
         LOGGER.error(
@@ -447,6 +460,19 @@ def main():
                 instance.get('ip_address'))
             sys.exit(1)
     LOGGER.info('MAIN> all instances is up and ready')
+    # print instance addresses table
+    max_name_len = max([len(name) for name in INSTANCES])
+    LOGGER.info(
+        'MAIN>   %s\tInstance ID\tPrivate IP\tPublic IP' % \
+            'Nodename'.ljust(max_name_len))
+    for instance_name in sorted(INSTANCES.keys()):
+        LOGGER.info(
+            'MAIN>   %s\t%s\t%s\t%s' % \
+                (instance_name.ljust(max_name_len),
+                 INSTANCES[instance_name]['instance_id'],
+                 INSTANCES[instance_name]['private_ip_address'],
+                 INSTANCES[instance_name]['ip_address']))
+    # launch super script if defined
     if super_script is not None:
         LOGGER.info('MAIN> substituting macros in %r...', super_script)
         new_super_script = super_script + '.substituted'
