@@ -40,6 +40,8 @@ INSTANCES = {}
 
 # Global flags
 ERROR_OCCURED = False
+PAUSE = False
+PAUSE_ON_ERROR = False
 NO_TERMINATE = False
 NO_TERMINATE_ON_ERROR = False
 
@@ -242,6 +244,22 @@ def ping_tcp(host, port):
         return False
 
 
+def pause_if_requested():
+    """
+    Make a pause until the user press the ENTER key,
+    if such behaviour was requested by the user with
+    corresponding command line options.
+    The function is registered as atexit trigger and
+    must run before the terminate_all() function.
+    """
+    global ERROR_OCCURED
+    global PAUSE, PAUSE_ON_ERROR
+    if ((PAUSE and not ERROR_OCCURED) or
+        (PAUSE_ON_ERROR and ERROR_OCCURED)):
+        LOGGER.info('MAIN> press ENTER to terminate')
+        sys.stdin.readline()
+
+
 def terminate_all():
     """
     Terminate all Amazon instances, registered in INSTANCES
@@ -403,6 +421,7 @@ def main():
     global LOGGER
     global INSTANCES
     global ERROR_OCCURED
+    global PAUSE, PAUSE_ON_ERROR
     global NO_TERMINATE, NO_TERMINATE_ON_ERROR
     # parse command line args
     parser = argparse.ArgumentParser(
@@ -411,7 +430,13 @@ def main():
         '-p', '--pause',
         action = 'store_true',
         help = 'wait until user press the ENTER key after the super'
-        ' script and before termination of the instances.')
+        ' script and before termination of the instances.'
+        ' In case of an error no pause will be made.')
+    parser.add_argument(
+        '--pause-on-error',
+        action = 'store_true',
+        help = 'wait until user press the ENTER key before'
+        ' termination of the instances when an error occurs.')
     parser.add_argument(
         '--no-terminate',
         action = 'store_true',
@@ -432,6 +457,8 @@ def main():
         'config_path',
         help = 'path to configuration file')
     cmd_args = parser.parse_args()
+    PAUSE = cmd_args.pause
+    PAUSE_ON_ERROR = cmd_args.pause_on_error
     NO_TERMINATE = cmd_args.no_terminate
     NO_TERMINATE_ON_ERROR = cmd_args.no_terminate_on_error
     # configure the Logger
@@ -471,6 +498,7 @@ def main():
     base_script = getOrNone(config, 'main', 'script')
     # setup termination hook
     atexit.register(terminate_all)
+    atexit.register(pause_if_requested)
     LOGGER.debug('MAIN> parse the rest of the configuration file...')
     for section in config.sections():
         if section == 'main':
@@ -547,9 +575,6 @@ def main():
         LOGGER.info('MAIN> running super script %r...', new_super_script)
         if cmd([new_super_script], super_log):
             LOGGER.info('MAIN> super script %r done', new_super_script)
-            if cmd_args.pause:
-                LOGGER.info('MAIN> press ENTER to terminate')
-                sys.stdin.readline()
         else:
             ERROR_OCCURED = True
             LOGGER.critical(
@@ -557,11 +582,6 @@ def main():
             if super_log is not None:
                 LOGGER.error('MAIN> see %r for details', super_log)
             sys.exit(1)
-    else:
-        # no super script defined
-        if cmd_args.pause:
-            LOGGER.info('MAIN> press ENTER to terminate')
-            sys.stdin.readline()
 
 
 def substitute_macros(infile, outfile, ssh_config):

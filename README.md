@@ -22,6 +22,9 @@ Optional arguments:
 * _-h, --help_ - Show this help message and exit.
 * _-p, --pause_ - Wait until user press the ENTER key after
  the super script and before termination of the instances.
+ In case of an error no pause will be made.
+* _--pause-on-error_ - Wait until user press the ENTER key
+ before termination of the instances when an error occurs.
 * _--no-terminate_ - Do not terminate the instances after
  the work is done. The instances WILL be terminated when
  an error occurs.
