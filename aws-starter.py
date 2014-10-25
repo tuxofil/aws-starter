@@ -131,32 +131,17 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         subnet_id = subnet_id,
         private_ip_address = private_ip)
     instance = reservation.instances[0]
-    instance_id = instance.id
-    INSTANCES[instance_name]['instance_id'] = instance_id
+    INSTANCES[instance_name]['instance_id'] = instance.id
     LOGGER.info(
         'launched %s at %s. Wait until it starts...',
-        instance_id, VARS['REGION_NAME'])
-    wait_for_instance(instance, instance_id, max_wait_time)
+        instance.id, VARS['REGION_NAME'])
+    wait_for_instance(instance, instance.id, max_wait_time)
     if VARS['ERROR_OCCURED']:
         return
-    LOGGER.info('instance %s started', instance_id)
-    map_instance_to_ip_addrs(connection, instance_name, instance_id)
+    LOGGER.info('instance %s started', instance.id)
+    map_instance_to_ip_addrs(connection, instance_name, instance.id)
     if script is not None:
-        LOGGER.info(
-            'wait for SSHD on %s...', instance4log(instance_name))
-        start_time = time.time()
-        deadline = start_time + max_wait_time
-        while True:
-            if VARS['ERROR_OCCURED']:
-                return
-            if time.time() > deadline:
-                LOGGER.error(
-                    'timeout waiting for SSHD at %s within %r seconds',
-                    instance4log(instance_name), max_wait_time)
-                raise InstanceLaunchError
-            if ping_tcp(INSTANCES[instance_name]['ip_address'], 22):
-                break
-            time.sleep(5)
+        wait_for_sshd(instance_name, max_wait_time)
         LOGGER.info(
             'running script %r on the %s...',
             script, instance4log(instance_name))
@@ -175,6 +160,32 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         return
     # mark instance as up and ready with special flag field
     INSTANCES[instance_name]['ready'] = True
+
+
+def wait_for_sshd(instance_name, max_wait_time):
+    """
+    Wait for the SSHD on the instance for some time.
+
+    :param instance_name: instance name (from config file)
+    :type instance_name: string
+    :param max_wait_time: max time to wait, in seconds
+    :type max_wait_time: integer
+    """
+    LOGGER.info(
+        'wait for SSHD on %s...', instance4log(instance_name))
+    start_time = time.time()
+    deadline = start_time + max_wait_time
+    while True:
+        if VARS['ERROR_OCCURED']:
+            raise InstanceLaunchError
+        if time.time() > deadline:
+            LOGGER.error(
+                'timeout waiting for SSHD at %s within %r seconds',
+                instance4log(instance_name), max_wait_time)
+            raise InstanceLaunchError
+        if ping_tcp(INSTANCES[instance_name]['ip_address'], 22):
+            break
+        time.sleep(5)
 
 
 def instance4log(instance_name):
@@ -283,7 +294,7 @@ def ping_tcp(host, port):
         sock.connect((host, port))
         sock.close()
         return True
-    except Exception:
+    except socket.error:
         return False
 
 
@@ -537,25 +548,6 @@ def main():
             sys.exit(1)
 
 
-def get_or_none(config, section, item, default = None):
-    """
-    Get value from section item or return None when
-    no such item is present.
-
-    :param config: config object
-    :type config: instance of ConfigParser
-    :param section: config section name
-    :type section: string
-    :param item: section item name
-    :type item: string
-    :rtype: string or None
-    """
-    try:
-        return config.get(section, item)
-    except ConfigParser.NoOptionError:
-        return default
-
-
 def parse_cmd_args():
     """
     Parse command line arguments and return
@@ -607,46 +599,65 @@ def parse_config_file(config_path):
     :type config_path: string
     """
     cfg = ConfigParser.RawConfigParser(
-        {'instance_type': 't1.micro'})
+        {'instance_type': 't1.micro',
+         'max_wait_time': '120'})
     cfg.read(config_path)
-    # initialize global vars
     VARS['ACCESS_KEY_ID'] = cfg.get('main', 'access_key_id')
     VARS['SECRET_ACCESS_KEY'] = cfg.get('main', 'secret_access_key')
     VARS['REGION_NAME'] = cfg.get('main', 'region')
-    ssh_config = get_or_none(cfg, 'main', 'ssh_config')
-    super_script = get_or_none(cfg, 'main', 'super_script')
-    super_log = get_or_none(cfg, 'main', 'super_log')
-    base_image_id = get_or_none(cfg, 'main', 'image_id')
-    base_subnet_id = get_or_none(cfg, 'main', 'subnet_id')
-    base_ssh_key_name = get_or_none(cfg, 'main', 'ssh_key_name')
-    base_max_wait_time = int(get_or_none(cfg, 'main', 'max_wait_time', 120))
-    base_script = get_or_none(cfg, 'main', 'script')
     LOGGER.debug('MAIN> parse the rest of the configuration file...')
     for section in cfg.sections():
         if section == 'main':
             continue
-        instance_type = cfg.get(section, 'instance_type')
-        image_id = get_or_none(cfg, section, 'image_id', base_image_id)
-        subnet_id = get_or_none(cfg, section, 'subnet_id', base_subnet_id)
-        ssh_key_name = get_or_none(cfg, section, 'ssh_key_name',
-                                   base_ssh_key_name)
-        private_ip = get_or_none(cfg, section, 'private_ip')
-        max_wait_time = int(get_or_none(cfg, section, 'max_wait_time',
-                                        base_max_wait_time))
+        image_id = getcfg(cfg, section, 'image_id', 'image_id')
+        subnet_id = getcfg(cfg, section, 'subnet_id', 'subnet_id')
+        ssh_key_name = getcfg(cfg, section, 'ssh_key_name', 'ssh_key_name')
+        private_ip = getcfg(cfg, section, 'private_ip')
+        max_wait_time = int(getcfg(cfg, section, 'max_wait_time',
+                                   'max_wait_time'))
         INSTANCES[section] = \
-            {'instance_type': instance_type,
+            {'instance_type': cfg.get(section, 'instance_type'),
              'image_id': image_id,
              'subnet_id': subnet_id,
              'max_wait_time': max_wait_time,
-             'script': get_or_none(cfg, section, 'script', base_script),
-             'script_log': get_or_none(cfg, section, 'script_log'),
-             'ssh_config': ssh_config,
+             'script': getcfg(cfg, section, 'script', 'script'),
+             'script_log': getcfg(cfg, section, 'script_log'),
+             'ssh_config': getcfg(cfg, 'main', 'ssh_config'),
              'requested_private_ip': private_ip,
              'ssh_key_name': ssh_key_name}
     return {
-        'super_script': super_script,
-        'super_log': super_log,
-        'ssh_config': ssh_config}
+        'super_script': getcfg(cfg, 'main', 'super_script'),
+        'super_log': getcfg(cfg, 'main', 'super_log'),
+        'ssh_config': getcfg(cfg, 'main', 'ssh_config')}
+
+
+def getcfg(cfg, section, item, main_item = None, default = None):
+    """
+    Return a value for configuration item from the config file.
+    If main_item arg is defined, a corresponding item in the
+    configs 'main' section will be looked up when no item
+    found in the requested section.
+    If no explicit value was found in the section nor in the
+    main section, default value will be returned.
+
+    :param cfg: config object
+    :type cfg: instance of ConfigParser
+    :param section: config section name
+    :type section: string
+    :param item: section item name
+    :type item: string
+    :param main_item: item in the 'main' section
+    :type main_item: string or NoneType
+    :param default: default value for the item
+    :type default: string or NoneType
+    :rtype: string or None
+    """
+    try:
+        return cfg.get(section, item)
+    except ConfigParser.NoOptionError:
+        if main_item is not None:
+            return getcfg(cfg, 'main', item, default = default)
+        return default
 
 
 def substitute_macros(infile, outfile, ssh_config):
