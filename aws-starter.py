@@ -366,6 +366,11 @@ def main():
     parser = argparse.ArgumentParser(
         description = 'Do some work with Amazon instances.')
     parser.add_argument(
+        '-p', '--pause',
+        action = 'store_true',
+        help = 'wait until user press the ENTER key after the super'
+        ' script and before termination of the instances.')
+    parser.add_argument(
         '-v', '--verbosity',
         default = 'warn',
         help = 'verbosity level. Default is "info". Possible'
@@ -373,7 +378,7 @@ def main():
     parser.add_argument(
         'config_path',
         help = 'path to configuration file')
-    args = parser.parse_args()
+    cmd_args = parser.parse_args()
     # configure the Logger
     verbosities = {
         'critical': 50,
@@ -384,12 +389,12 @@ def main():
     logging.basicConfig(
         format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         datefmt = '%Y-%m-%d %H:%M:%S',
-        level = verbosities.get(args.verbosity, 20))
+        level = verbosities.get(cmd_args.verbosity, 20))
     LOGGER = logging.getLogger('AmazonStarter')
     # read the configuration file
     config = ConfigParser.RawConfigParser(
         {'instance_type': 't1.micro'})
-    config.read(args.config_path)
+    config.read(cmd_args.config_path)
     # initialize global vars
     ACCESS_KEY_ID = config.get('main', 'access_key_id')
     SECRET_ACCESS_KEY = config.get('main', 'secret_access_key')
@@ -486,12 +491,20 @@ def main():
         LOGGER.info('MAIN> running super script %r...', new_super_script)
         if cmd([new_super_script], super_log):
             LOGGER.info('MAIN> super script %r done', new_super_script)
+            if cmd_args.pause:
+                LOGGER.info('MAIN> press ENTER to terminate')
+                sys.stdin.readline()
         else:
             LOGGER.critical(
                 'MAIN> super script %r failed', new_super_script)
             if super_log is not None:
                 LOGGER.error('MAIN> see %r for details', super_log)
             sys.exit(1)
+    else:
+        # no super script defined
+        if cmd_args.pause:
+            LOGGER.info('MAIN> press ENTER to terminate')
+            sys.stdin.readline()
 
 
 def substitute_macros(infile, outfile, ssh_config):
