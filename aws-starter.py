@@ -129,7 +129,9 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     instance = reservation.instances[0]
     instance_id = instance.id
     INSTANCES[instance_name]['instance_id'] = instance_id
-    LOGGER.info('launched %s. Wait until it starts...', instance_id)
+    LOGGER.info(
+        'launched %s at %s. Wait until it starts...',
+        instance_id, VARS['REGION_NAME'])
     wait_for_instance(instance, instance_id, max_wait_time)
     if VARS['ERROR_OCCURED']:
         return
