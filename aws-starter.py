@@ -88,7 +88,7 @@ def launch_catched(*args):
 
 def launch(instance_name, instance_type, image_id, subnet_id,
            max_wait_time = None, script = None, script_log = None,
-           ssh_config = None, private_ip = None):
+           ssh_config = None, private_ip = None, ssh_key_name = None):
     """
     Launch a new instance.
     On success return tuple of an instance ID and instance public IP.
@@ -115,6 +115,9 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     :type ssh_config: string or NoneType
     :param private_ip: private IP to assign with the instance.
     :type private_ip: string or NoneType
+    :param ssh_key_name: name of the SSH key on the Amazon side
+        to access to the instance.
+    :type ssh_key_name: string or NoneType
     :rtype: (string, string) or NoneType
     """
     connection = connect()
@@ -123,6 +126,7 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         instance_type, image_id, subnet_id)
     reservation = connection.run_instances(
         image_id = image_id,
+        key_name = ssh_key_name,
         instance_type = instance_type,
         subnet_id = subnet_id,
         private_ip_address = private_ip)
@@ -481,7 +485,8 @@ def main():
                     args['image_id'], args['subnet_id'],
                     args['max_wait_time'], args['script'],
                     args['script_log'], args['ssh_config'],
-                    args['requested_private_ip']])
+                    args['requested_private_ip'],
+                    args['ssh_key_name']])
         thread.start()
         threads.append(thread)
     LOGGER.info('MAIN> wait for the threads...')
@@ -613,6 +618,7 @@ def parse_config_file(config_path):
     super_log = get_or_none(cfg, 'main', 'super_log')
     base_image_id = get_or_none(cfg, 'main', 'image_id')
     base_subnet_id = get_or_none(cfg, 'main', 'subnet_id')
+    base_ssh_key_name = get_or_none(cfg, 'main', 'ssh_key_name')
     base_max_wait_time = int(get_or_none(cfg, 'main', 'max_wait_time', 120))
     base_script = get_or_none(cfg, 'main', 'script')
     LOGGER.debug('MAIN> parse the rest of the configuration file...')
@@ -622,6 +628,8 @@ def parse_config_file(config_path):
         instance_type = cfg.get(section, 'instance_type')
         image_id = get_or_none(cfg, section, 'image_id', base_image_id)
         subnet_id = get_or_none(cfg, section, 'subnet_id', base_subnet_id)
+        ssh_key_name = get_or_none(cfg, section, 'ssh_key_name',
+                                   base_ssh_key_name)
         private_ip = get_or_none(cfg, section, 'private_ip')
         max_wait_time = int(get_or_none(cfg, section, 'max_wait_time',
                                         base_max_wait_time))
@@ -633,7 +641,8 @@ def parse_config_file(config_path):
              'script': get_or_none(cfg, section, 'script', base_script),
              'script_log': get_or_none(cfg, section, 'script_log'),
              'ssh_config': ssh_config,
-             'requested_private_ip': private_ip}
+             'requested_private_ip': private_ip,
+             'ssh_key_name': ssh_key_name}
     return {
         'super_script': super_script,
         'super_log': super_log,
