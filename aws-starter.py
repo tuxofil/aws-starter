@@ -254,8 +254,8 @@ def pause_if_requested():
     """
     global ERROR_OCCURED
     global PAUSE, PAUSE_ON_ERROR
-    if ((PAUSE and not ERROR_OCCURED) or
-        (PAUSE_ON_ERROR and ERROR_OCCURED)):
+    if (PAUSE and not ERROR_OCCURED) or \
+            (PAUSE_ON_ERROR and ERROR_OCCURED):
         LOGGER.info('MAIN> press ENTER to terminate')
         sys.stdin.readline()
 
@@ -558,15 +558,15 @@ def main():
     # print instance addresses table
     max_name_len = max([len(name) for name in INSTANCES])
     LOGGER.info(
-        'MAIN>   %s\tInstance ID\tPrivate IP\tPublic IP' % \
-            'Nodename'.ljust(max_name_len))
+        'MAIN>   %s\tInstance ID\tPrivate IP\tPublic IP' %
+        'Nodename'.ljust(max_name_len))
     for instance_name in sorted(INSTANCES.keys()):
         LOGGER.info(
-            'MAIN>   %s\t%s\t%s\t%s' % \
-                (instance_name.ljust(max_name_len),
-                 INSTANCES[instance_name]['instance_id'],
-                 INSTANCES[instance_name]['private_ip_address'],
-                 INSTANCES[instance_name]['ip_address']))
+            'MAIN>   %s\t%s\t%s\t%s' %
+            (instance_name.ljust(max_name_len),
+             INSTANCES[instance_name]['instance_id'],
+             INSTANCES[instance_name]['private_ip_address'],
+             INSTANCES[instance_name]['ip_address']))
     # launch super script if defined
     if super_script is not None:
         LOGGER.info('MAIN> substituting macros in %r...', super_script)
