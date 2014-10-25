@@ -30,9 +30,16 @@ REGION_NAME = None
 
 # Logging interface object
 LOGGER = logging.getLogger()
+logging.basicConfig(
+    format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    datefmt = '%Y-%m-%d %H:%M:%S',
+    level = 20)
 
 # where new instance IDs will be registered
 INSTANCES = {}
+
+# Global flags
+ERROR_OCCURED = False
 
 
 def connect():
@@ -61,6 +68,20 @@ def connect():
         region = region_info)
     LOGGER.debug('connected')
     return connection
+
+
+def launch_catched(*args):
+    """
+    A wrapper for the launch() function.
+    Just set a global ERROR_OCCURED flag on any exception.
+    """
+    global LOGGER
+    global ERROR_OCCURED
+    try:
+        launch(*args)
+    except Exception as exc:
+        ERROR_OCCURED = True
+        LOGGER.exception(exc)
 
 
 def launch(instance_name, instance_type, image_id, subnet_id,
@@ -96,6 +117,7 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     """
     global LOGGER
     global INSTANCES
+    global ERROR_OCCURED
     connection = connect()
     LOGGER.debug(
         'launching %s from AMI %s (with subnet %s)...',
@@ -122,6 +144,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         if instance.update() == 'running':
             break
         time.sleep(5)
+    if ERROR_OCCURED:
+        return
     LOGGER.info('instance %s started', instance_id)
     # Map instance ID to public IP
     reservations = connection.get_all_instances([instance_id])
@@ -165,6 +189,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         start_time = time.time()
         deadline = start_time + max_wait_time
         while True:
+            if ERROR_OCCURED:
+                return
             if time.time() > deadline:
                 LOGGER.error(
                     'timeout waiting for SSHD at %s (%s) within %r seconds',
@@ -186,6 +212,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
                     '%s (%s): see details in log file: %r',
                     instance_id, ip_address, script_log)
             return None
+    if ERROR_OCCURED:
+        return
     # mark instance as up and ready with special flag field
     INSTANCES[instance_name]['ready'] = True
     return (instance_id, ip_address)
@@ -362,6 +390,7 @@ def main():
     global ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION_NAME
     global LOGGER
     global INSTANCES
+    global ERROR_OCCURED
     # parse command line args
     parser = argparse.ArgumentParser(
         description = 'Do some work with Amazon instances.')
@@ -450,7 +479,7 @@ def main():
     for instance_name in INSTANCES:
         args = INSTANCES[instance_name]
         thread = threading.Thread(
-            target = launch,
+            target = launch_catched,
             args = [instance_name, args['instance_type'],
                     args['image_id'], args['subnet_id'],
                     args['max_wait_time'], args['script'],
@@ -465,6 +494,7 @@ def main():
     for instance_name in INSTANCES:
         instance = INSTANCES[instance_name]
         if not instance.get('ready', False):
+            ERROR_OCCURED = True
             LOGGER.critical(
                 'MAIN> instance %r is not ready (id=%r; ip=%r)',
                 instance_name, instance.get('instance_id'),
@@ -495,6 +525,7 @@ def main():
                 LOGGER.info('MAIN> press ENTER to terminate')
                 sys.stdin.readline()
         else:
+            ERROR_OCCURED = True
             LOGGER.critical(
                 'MAIN> super script %r failed', new_super_script)
             if super_log is not None:
@@ -560,3 +591,7 @@ if __name__ == '__main__':
         main()
     except KeyboardInterrupt:
         pass
+    except Exception as exc:
+        ERROR_OCCURED = True
+        LOGGER.exception(exc)
+        sys.exit(1)
