@@ -40,6 +40,8 @@ INSTANCES = {}
 
 # Global flags
 ERROR_OCCURED = False
+NO_TERMINATE = False
+NO_TERMINATE_ON_ERROR = False
 
 
 def connect():
@@ -247,10 +249,20 @@ def terminate_all():
     """
     global LOGGER
     global INSTANCES
+    global ERROR_OCCURED
+    global NO_TERMINATE, NO_TERMINATE_ON_ERROR
     instance_ids = \
         [INSTANCES[instance_name]['instance_id']
          for instance_name in INSTANCES
          if 'instance_id' in INSTANCES[instance_name]]
+    if NO_TERMINATE and not ERROR_OCCURED:
+        LOGGER.warning(
+            'instances %r WILL NOT be terminated' % instance_ids)
+        return
+    if NO_TERMINATE_ON_ERROR and ERROR_OCCURED:
+        LOGGER.warning(
+            'instances %r WILL NOT be terminated' % instance_ids)
+        return
     try:
         if len(instance_ids) > 0:
             connection = connect()
@@ -391,6 +403,7 @@ def main():
     global LOGGER
     global INSTANCES
     global ERROR_OCCURED
+    global NO_TERMINATE, NO_TERMINATE_ON_ERROR
     # parse command line args
     parser = argparse.ArgumentParser(
         description = 'Do some work with Amazon instances.')
@@ -400,6 +413,17 @@ def main():
         help = 'wait until user press the ENTER key after the super'
         ' script and before termination of the instances.')
     parser.add_argument(
+        '--no-terminate',
+        action = 'store_true',
+        help = 'do not terminate the instances after the work is'
+        ' done. The instances WILL be terminated when an error occurs.')
+    parser.add_argument(
+        '--no-terminate-on-error',
+        action = 'store_true',
+        help = 'do not terminate the instances after an error has'
+        ' been occured. This is useful to make able the user to'
+        ' investigate the problem on the instances.')
+    parser.add_argument(
         '-v', '--verbosity',
         default = 'warn',
         help = 'verbosity level. Default is "info". Possible'
@@ -408,6 +432,8 @@ def main():
         'config_path',
         help = 'path to configuration file')
     cmd_args = parser.parse_args()
+    NO_TERMINATE = cmd_args.no_terminate
+    NO_TERMINATE_ON_ERROR = cmd_args.no_terminate_on_error
     # configure the Logger
     verbosities = {
         'critical': 50,
