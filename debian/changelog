@@ -1,3 +1,12 @@
+aws-starter (0.6.0-1) unstable; urgency=low
+
+  * add --pause-on-error option;
+  * improve logging;
+  * config file: implement ssh_key_name option;
+  * refactor: satisfy pylint, pep8.
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Sat, 25 Oct 2014 22:52:00 +0300
+
 aws-starter (0.5.0-5) unstable; urgency=low
 
   * add -p/--pause option;
