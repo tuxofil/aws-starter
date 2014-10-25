@@ -23,13 +23,14 @@ import boto.ec2
 # ----------------------------------------------------------------------
 # Global vars
 
-# Amazon AWS access requisites
-ACCESS_KEY_ID = None
-SECRET_ACCESS_KEY = None
-REGION_NAME = None
+VARS = {'ERROR_OCCURED': False,
+        'PAUSE': False,
+        'PAUSE_ON_ERROR': False,
+        'NO_TERMINATE': False,
+        'NO_TERMINATE_ON_ERROR': False}
 
 # Logging interface object
-LOGGER = logging.getLogger()
+LOGGER = logging.getLogger('AmazonStarter')
 logging.basicConfig(
     format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     datefmt = '%Y-%m-%d %H:%M:%S',
@@ -38,12 +39,12 @@ logging.basicConfig(
 # where new instance IDs will be registered
 INSTANCES = {}
 
-# Global flags
-ERROR_OCCURED = False
-PAUSE = False
-PAUSE_ON_ERROR = False
-NO_TERMINATE = False
-NO_TERMINATE_ON_ERROR = False
+
+class InstanceLaunchError(Exception):
+    """
+    Raises when thread fails to launch and prepare an instance.
+    """
+    pass
 
 
 def connect():
@@ -56,19 +57,18 @@ def connect():
 
     :rtype: instance of boto.ec2.Connection
     """
-    global ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION_NAME
-    global LOGGER
-    LOGGER.debug('connecting to %s region...', REGION_NAME)
+    LOGGER.debug(
+        'connecting to %s region...', VARS['REGION_NAME'])
     # search region info
     region_info = None
     for region in boto.ec2.regions():
-        if region.name == REGION_NAME:
+        if region.name == VARS['REGION_NAME']:
             region_info = region
             break
     # connect to Amazon AWS API
     connection = boto.connect_ec2(
-        aws_access_key_id = ACCESS_KEY_ID,
-        aws_secret_access_key = SECRET_ACCESS_KEY,
+        aws_access_key_id = VARS['ACCESS_KEY_ID'],
+        aws_secret_access_key = VARS['SECRET_ACCESS_KEY'],
         region = region_info)
     LOGGER.debug('connected')
     return connection
@@ -77,14 +77,12 @@ def connect():
 def launch_catched(*args):
     """
     A wrapper for the launch() function.
-    Just set a global ERROR_OCCURED flag on any exception.
+    Just set a global VARS['ERROR_OCCURED'] flag on any exception.
     """
-    global LOGGER
-    global ERROR_OCCURED
     try:
         launch(*args)
     except Exception as exc:
-        ERROR_OCCURED = True
+        VARS['ERROR_OCCURED'] = True
         LOGGER.exception(exc)
 
 
@@ -119,9 +117,6 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     :type private_ip: string or NoneType
     :rtype: (string, string) or NoneType
     """
-    global LOGGER
-    global INSTANCES
-    global ERROR_OCCURED
     connection = connect()
     LOGGER.debug(
         'launching %s from AMI %s (with subnet %s)...',
@@ -135,6 +130,73 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     instance_id = instance.id
     INSTANCES[instance_name]['instance_id'] = instance_id
     LOGGER.info('launched %s. Wait until it starts...', instance_id)
+    wait_for_instance(instance, instance_id, max_wait_time)
+    if VARS['ERROR_OCCURED']:
+        return
+    LOGGER.info('instance %s started', instance_id)
+    map_instance_to_ip_addrs(connection, instance_name, instance_id)
+    if script is not None:
+        LOGGER.info(
+            'wait for SSHD on %s...', instance4log(instance_name))
+        start_time = time.time()
+        deadline = start_time + max_wait_time
+        while True:
+            if VARS['ERROR_OCCURED']:
+                return
+            if time.time() > deadline:
+                LOGGER.error(
+                    'timeout waiting for SSHD at %s within %r seconds',
+                    instance4log(instance_name), max_wait_time)
+                raise InstanceLaunchError
+            if ping_tcp(INSTANCES[instance_name]['ip_address'], 22):
+                break
+            time.sleep(5)
+        LOGGER.info(
+            'running script %r on the %s...',
+            script, instance4log(instance_name))
+        if not execute_script_remotely(
+                INSTANCES[instance_name]['ip_address'],
+                script, script_log, ssh_config):
+            LOGGER.error(
+                '%s: failed to run script %r',
+                instance4log(instance_name), script)
+            if script_log is not None:
+                LOGGER.error(
+                    '%s: see details in log file: %r',
+                    instance4log(instance_name), script_log)
+            raise InstanceLaunchError
+    if VARS['ERROR_OCCURED']:
+        return
+    # mark instance as up and ready with special flag field
+    INSTANCES[instance_name]['ready'] = True
+
+
+def instance4log(instance_name):
+    """
+    Generate formatted string representing instance with given name.
+
+    :param instance_name: instance name (from config file)
+    :type instance_name: string
+    :rtype: string
+    """
+    return '"%s" (id=%s, ip=%s, priv_ip=%s)' % \
+        (instance_name,
+         INSTANCES[instance_name].get('instance_id'),
+         INSTANCES[instance_name].get('ip_address'),
+         INSTANCES[instance_name].get('private_ip_address'))
+
+
+def wait_for_instance(instance, instance_id, max_wait_time = None):
+    """
+    Wait until the instance status become 'running'.
+
+    :param instance: Amazon instance object
+    :type instance: instance of boto.ec2.Instance
+    :param instance_id: Amazon instance unique ID
+    :type instance_id: string
+    :param max_wait_time: max time to wait, in seconds
+    :type max_wait_time: integer
+    """
     if max_wait_time is None:
         max_wait_time = 120
     start_time = time.time()
@@ -144,14 +206,24 @@ def launch(instance_name, instance_type, image_id, subnet_id,
             LOGGER.error(
                 'instance %s failed to start within %r seconds',
                 instance_id, max_wait_time)
-            return None
+            raise InstanceLaunchError
         if instance.update() == 'running':
             break
         time.sleep(5)
-    if ERROR_OCCURED:
-        return
-    LOGGER.info('instance %s started', instance_id)
-    # Map instance ID to public IP
+
+
+def map_instance_to_ip_addrs(connection, instance_name, instance_id):
+    """
+    Map Amazon instance to public and private IP addresses.
+    The addresses will be stored in the INSTANCES global var.
+
+    :param connection: connection to Amazon AWS API
+    :type connection: instance of boto.ec2.Connection
+    :param instance_name: name of the instance (from config file)
+    :type instance_name: string
+    :param instance_id: Amazon instance ID
+    :type instance_id: string
+    """
     reservations = connection.get_all_instances([instance_id])
     instances = [instance
                  for reservation in reservations
@@ -161,14 +233,14 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         LOGGER.error(
             'launched instance %s is not found',
             instance_id)
-        return None
+        raise InstanceLaunchError
     # look for a private IP address
     private_ip_address = instances[0].private_ip_address
     if private_ip_address is None:
         LOGGER.error(
             'failed to get private IP address for instance %s',
             instance_id)
-        return None
+        raise InstanceLaunchError
     private_ip_address = str(private_ip_address)  # dispose of unicode string
     INSTANCES[instance_name]['private_ip_address'] = private_ip_address
     LOGGER.info(
@@ -180,47 +252,12 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         LOGGER.error(
             'failed to get public IP address for instance %s',
             instance_id)
-        return None
+        raise InstanceLaunchError
     ip_address = str(ip_address)  # dispose of unicode string
     INSTANCES[instance_name]['ip_address'] = ip_address
     LOGGER.info(
         'instance %s has public IP %s',
         instance_id, ip_address)
-    if script is not None:
-        LOGGER.info(
-            'wait for SSHD on %s (%s)...',
-            instance_id, ip_address)
-        start_time = time.time()
-        deadline = start_time + max_wait_time
-        while True:
-            if ERROR_OCCURED:
-                return
-            if time.time() > deadline:
-                LOGGER.error(
-                    'timeout waiting for SSHD at %s (%s) within %r seconds',
-                    instance_id, ip_address, max_wait_time)
-                return None
-            if ping_tcp(ip_address, 22):
-                break
-            time.sleep(5)
-        LOGGER.info(
-            'running script %r on the %s (%s)...',
-            script, instance_id, ip_address)
-        if not execute_script_remotely(ip_address, script,
-                                       script_log, ssh_config):
-            LOGGER.error(
-                '%s (%s): failed to run script %r',
-                instance_id, ip_address, script)
-            if script_log is not None:
-                LOGGER.error(
-                    '%s (%s): see details in log file: %r',
-                    instance_id, ip_address, script_log)
-            return None
-    if ERROR_OCCURED:
-        return
-    # mark instance as up and ready with special flag field
-    INSTANCES[instance_name]['ready'] = True
-    return (instance_id, ip_address)
 
 
 def ping_tcp(host, port):
@@ -252,10 +289,8 @@ def pause_if_requested():
     The function is registered as atexit trigger and
     must run before the terminate_all() function.
     """
-    global ERROR_OCCURED
-    global PAUSE, PAUSE_ON_ERROR
-    if (PAUSE and not ERROR_OCCURED) or \
-            (PAUSE_ON_ERROR and ERROR_OCCURED):
+    if (VARS['PAUSE'] and not VARS['ERROR_OCCURED']) or \
+            (VARS['PAUSE_ON_ERROR'] and VARS['ERROR_OCCURED']):
         LOGGER.info('MAIN> press ENTER to terminate')
         sys.stdin.readline()
 
@@ -265,19 +300,15 @@ def terminate_all():
     Terminate all Amazon instances, registered in INSTANCES
     global dictionary.
     """
-    global LOGGER
-    global INSTANCES
-    global ERROR_OCCURED
-    global NO_TERMINATE, NO_TERMINATE_ON_ERROR
     instance_ids = \
         [INSTANCES[instance_name]['instance_id']
          for instance_name in INSTANCES
          if 'instance_id' in INSTANCES[instance_name]]
-    if NO_TERMINATE and not ERROR_OCCURED:
+    if VARS['NO_TERMINATE'] and not VARS['ERROR_OCCURED']:
         LOGGER.warning(
             'instances %r WILL NOT be terminated' % instance_ids)
         return
-    if NO_TERMINATE_ON_ERROR and ERROR_OCCURED:
+    if VARS['NO_TERMINATE_ON_ERROR'] and VARS['ERROR_OCCURED']:
         LOGGER.warning(
             'instances %r WILL NOT be terminated' % instance_ids)
         return
@@ -384,7 +415,6 @@ def cmd(command, log_path = None):
     :type log_path: string or NoneType
     :rtype: boolean
     """
-    global LOGGER
     LOGGER.debug('spawning command: %r...', command)
     if log_path is None:
         proc = subprocess.Popen(
@@ -417,13 +447,115 @@ def main():
     """
     Entry point.
     """
-    global ACCESS_KEY_ID, SECRET_ACCESS_KEY, REGION_NAME
-    global LOGGER
-    global INSTANCES
-    global ERROR_OCCURED
-    global PAUSE, PAUSE_ON_ERROR
-    global NO_TERMINATE, NO_TERMINATE_ON_ERROR
     # parse command line args
+    cmd_args = parse_cmd_args()
+    VARS['PAUSE'] = cmd_args.pause
+    VARS['PAUSE_ON_ERROR'] = cmd_args.pause_on_error
+    VARS['NO_TERMINATE'] = cmd_args.no_terminate
+    VARS['NO_TERMINATE_ON_ERROR'] = cmd_args.no_terminate_on_error
+    # configure the Logger
+    verbosities = {
+        'critical': 50,
+        'error': 40,
+        'warning': 30,
+        'info': 20,
+        'debug': 10}
+    logging.basicConfig(
+        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt = '%Y-%m-%d %H:%M:%S',
+        level = verbosities.get(cmd_args.verbosity, 20))
+    # read the configuration file
+    config = parse_config_file(cmd_args.config_path)
+    # setup termination hook
+    atexit.register(terminate_all)
+    atexit.register(pause_if_requested)
+    LOGGER.info('MAIN> start instances...')
+    threads = []
+    for instance_name in INSTANCES:
+        args = INSTANCES[instance_name]
+        thread = threading.Thread(
+            target = launch_catched,
+            args = [instance_name, args['instance_type'],
+                    args['image_id'], args['subnet_id'],
+                    args['max_wait_time'], args['script'],
+                    args['script_log'], args['ssh_config'],
+                    args['requested_private_ip']])
+        thread.start()
+        threads.append(thread)
+    LOGGER.info('MAIN> wait for the threads...')
+    for thread in threads:
+        thread.join()
+    LOGGER.info('MAIN> check launch results...')
+    for instance_name in INSTANCES:
+        instance = INSTANCES[instance_name]
+        if not instance.get('ready', False):
+            VARS['ERROR_OCCURED'] = True
+            LOGGER.critical(
+                'MAIN> instance %r is not ready (id=%r; ip=%r)',
+                instance_name, instance.get('instance_id'),
+                instance.get('ip_address'))
+            sys.exit(1)
+    LOGGER.info('MAIN> all instances is up and ready')
+    # print instance addresses table
+    max_name_len = max([len(name) for name in INSTANCES])
+    LOGGER.info(
+        'MAIN>   %s\tInstance ID\tPrivate IP\tPublic IP' %
+        'Nodename'.ljust(max_name_len))
+    for instance_name in sorted(INSTANCES.keys()):
+        LOGGER.info(
+            'MAIN>   %s\t%s\t%s\t%s' %
+            (instance_name.ljust(max_name_len),
+             INSTANCES[instance_name]['instance_id'],
+             INSTANCES[instance_name]['private_ip_address'],
+             INSTANCES[instance_name]['ip_address']))
+    # launch super script if defined
+    if config['super_script'] is not None:
+        LOGGER.info(
+            'MAIN> substituting macros in %r...',
+            config['super_script'])
+        new_super_script = config['super_script'] + '.substituted'
+        substitute_macros(
+            config['super_script'], new_super_script,
+            config['ssh_config'])
+        LOGGER.info('MAIN> running super script %r...', new_super_script)
+        if cmd([new_super_script], config['super_log']):
+            LOGGER.info('MAIN> super script %r done', new_super_script)
+        else:
+            VARS['ERROR_OCCURED'] = True
+            LOGGER.critical(
+                'MAIN> super script %r failed', new_super_script)
+            if config['super_log'] is not None:
+                LOGGER.error(
+                    'MAIN> see %r for details', config['super_log'])
+            sys.exit(1)
+
+
+def get_or_none(config, section, item, default = None):
+    """
+    Get value from section item or return None when
+    no such item is present.
+
+    :param config: config object
+    :type config: instance of ConfigParser
+    :param section: config section name
+    :type section: string
+    :param item: section item name
+    :type item: string
+    :rtype: string or None
+    """
+    try:
+        return config.get(section, item)
+    except ConfigParser.NoOptionError:
+        return default
+
+
+def parse_cmd_args():
+    """
+    Parse command line arguments and return
+    an object with parsed tool arguments.
+
+    :rtype: object
+    """
     parser = argparse.ArgumentParser(
         description = 'Do some work with Amazon instances.')
     parser.add_argument(
@@ -456,132 +588,54 @@ def main():
     parser.add_argument(
         'config_path',
         help = 'path to configuration file')
-    cmd_args = parser.parse_args()
-    PAUSE = cmd_args.pause
-    PAUSE_ON_ERROR = cmd_args.pause_on_error
-    NO_TERMINATE = cmd_args.no_terminate
-    NO_TERMINATE_ON_ERROR = cmd_args.no_terminate_on_error
-    # configure the Logger
-    verbosities = {
-        'critical': 50,
-        'error': 40,
-        'warning': 30,
-        'info': 20,
-        'debug': 10}
-    logging.basicConfig(
-        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt = '%Y-%m-%d %H:%M:%S',
-        level = verbosities.get(cmd_args.verbosity, 20))
-    LOGGER = logging.getLogger('AmazonStarter')
-    # read the configuration file
-    config = ConfigParser.RawConfigParser(
+    return parser.parse_args()
+
+
+def parse_config_file(config_path):
+    """
+    Parse the configuration file and initialize
+    global variables.
+
+    :param config_path: configuration file path
+    :type config_path: string
+    """
+    cfg = ConfigParser.RawConfigParser(
         {'instance_type': 't1.micro'})
-    config.read(cmd_args.config_path)
+    cfg.read(config_path)
     # initialize global vars
-    ACCESS_KEY_ID = config.get('main', 'access_key_id')
-    SECRET_ACCESS_KEY = config.get('main', 'secret_access_key')
-    REGION_NAME = config.get('main', 'region')
-    def getOrNone(config, section, option):
-        try:
-            return config.get(section, option)
-        except ConfigParser.NoOptionError:
-            return None
-    ssh_config = getOrNone(config, 'main', 'ssh_config')
-    super_script = getOrNone(config, 'main', 'super_script')
-    super_log = getOrNone(config, 'main', 'super_log')
-    base_image_id = getOrNone(config, 'main', 'image_id')
-    base_subnet_id = getOrNone(config, 'main', 'subnet_id')
-    base_max_wait_time = getOrNone(config, 'main', 'max_wait_time')
-    if base_max_wait_time is None:
-        base_max_wait_time = 120
-    base_max_wait_time = int(base_max_wait_time)
-    base_script = getOrNone(config, 'main', 'script')
-    # setup termination hook
-    atexit.register(terminate_all)
-    atexit.register(pause_if_requested)
+    VARS['ACCESS_KEY_ID'] = cfg.get('main', 'access_key_id')
+    VARS['SECRET_ACCESS_KEY'] = cfg.get('main', 'secret_access_key')
+    VARS['REGION_NAME'] = cfg.get('main', 'region')
+    ssh_config = get_or_none(cfg, 'main', 'ssh_config')
+    super_script = get_or_none(cfg, 'main', 'super_script')
+    super_log = get_or_none(cfg, 'main', 'super_log')
+    base_image_id = get_or_none(cfg, 'main', 'image_id')
+    base_subnet_id = get_or_none(cfg, 'main', 'subnet_id')
+    base_max_wait_time = int(get_or_none(cfg, 'main', 'max_wait_time', 120))
+    base_script = get_or_none(cfg, 'main', 'script')
     LOGGER.debug('MAIN> parse the rest of the configuration file...')
-    for section in config.sections():
+    for section in cfg.sections():
         if section == 'main':
             continue
-        instance_type = config.get(section, 'instance_type')
-        image_id = getOrNone(config, section, 'image_id')
-        if not image_id:
-            image_id = base_image_id
-        subnet_id = getOrNone(config, section, 'subnet_id')
-        if not subnet_id:
-            subnet_id = base_subnet_id
-        private_ip = getOrNone(config, section, 'private_ip')
-        max_wait_time = getOrNone(config, section, 'max_wait_time')
-        if not max_wait_time:
-            max_wait_time = base_max_wait_time
-        max_wait_time = int(max_wait_time)
-        script = getOrNone(config, section, 'script')
-        if not script:
-            script = base_script
-        script_log = getOrNone(config, section, 'script_log')
+        instance_type = cfg.get(section, 'instance_type')
+        image_id = get_or_none(cfg, section, 'image_id', base_image_id)
+        subnet_id = get_or_none(cfg, section, 'subnet_id', base_subnet_id)
+        private_ip = get_or_none(cfg, section, 'private_ip')
+        max_wait_time = int(get_or_none(cfg, section, 'max_wait_time',
+                                        base_max_wait_time))
         INSTANCES[section] = \
             {'instance_type': instance_type,
              'image_id': image_id,
              'subnet_id': subnet_id,
              'max_wait_time': max_wait_time,
-             'script': script,
-             'script_log': script_log,
+             'script': get_or_none(cfg, section, 'script', base_script),
+             'script_log': get_or_none(cfg, section, 'script_log'),
              'ssh_config': ssh_config,
              'requested_private_ip': private_ip}
-    LOGGER.info('MAIN> start instances...')
-    threads = []
-    for instance_name in INSTANCES:
-        args = INSTANCES[instance_name]
-        thread = threading.Thread(
-            target = launch_catched,
-            args = [instance_name, args['instance_type'],
-                    args['image_id'], args['subnet_id'],
-                    args['max_wait_time'], args['script'],
-                    args['script_log'], args['ssh_config'],
-                    args['requested_private_ip']])
-        thread.start()
-        threads.append(thread)
-    LOGGER.info('MAIN> wait for the threads...')
-    for thread in threads:
-        thread.join()
-    LOGGER.info('MAIN> check launch results...')
-    for instance_name in INSTANCES:
-        instance = INSTANCES[instance_name]
-        if not instance.get('ready', False):
-            ERROR_OCCURED = True
-            LOGGER.critical(
-                'MAIN> instance %r is not ready (id=%r; ip=%r)',
-                instance_name, instance.get('instance_id'),
-                instance.get('ip_address'))
-            sys.exit(1)
-    LOGGER.info('MAIN> all instances is up and ready')
-    # print instance addresses table
-    max_name_len = max([len(name) for name in INSTANCES])
-    LOGGER.info(
-        'MAIN>   %s\tInstance ID\tPrivate IP\tPublic IP' %
-        'Nodename'.ljust(max_name_len))
-    for instance_name in sorted(INSTANCES.keys()):
-        LOGGER.info(
-            'MAIN>   %s\t%s\t%s\t%s' %
-            (instance_name.ljust(max_name_len),
-             INSTANCES[instance_name]['instance_id'],
-             INSTANCES[instance_name]['private_ip_address'],
-             INSTANCES[instance_name]['ip_address']))
-    # launch super script if defined
-    if super_script is not None:
-        LOGGER.info('MAIN> substituting macros in %r...', super_script)
-        new_super_script = super_script + '.substituted'
-        substitute_macros(super_script, new_super_script, ssh_config)
-        LOGGER.info('MAIN> running super script %r...', new_super_script)
-        if cmd([new_super_script], super_log):
-            LOGGER.info('MAIN> super script %r done', new_super_script)
-        else:
-            ERROR_OCCURED = True
-            LOGGER.critical(
-                'MAIN> super script %r failed', new_super_script)
-            if super_log is not None:
-                LOGGER.error('MAIN> see %r for details', super_log)
-            sys.exit(1)
+    return {
+        'super_script': super_script,
+        'super_log': super_log,
+        'ssh_config': ssh_config}
 
 
 def substitute_macros(infile, outfile, ssh_config):
@@ -602,7 +656,6 @@ def substitute_macros(infile, outfile, ssh_config):
     :param ssh_config: path to SSH config.
     :type ssh_config: string or NoneType
     """
-    global INSTANCES
     with open(infile, 'r') as fdescr:
         body = fdescr.read()
     for instance_name in INSTANCES:
@@ -638,6 +691,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         pass
     except Exception as exc:
-        ERROR_OCCURED = True
+        VARS['ERROR_OCCURED'] = True
         LOGGER.exception(exc)
         sys.exit(1)
