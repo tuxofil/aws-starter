@@ -1,3 +1,10 @@
+aws-starter (0.5.0-5) unstable; urgency=low
+
+  * add -p/--pause option;
+  * add --no-terminate and --no-terminate-on-error options.
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Sat, 25 Oct 2014 12:17:00 +0300
+
 aws-starter (0.4.0) unstable; urgency=low
 
   * fix in-code docs;
