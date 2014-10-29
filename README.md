@@ -9,8 +9,16 @@ Purpose:
 
 ## Synopsis
 
+To show usage help:
+
 ```
-aws-starter.py [-h|--help] [-p|--pause] [--no-terminate] [--no-terminate-on-error] [-v VERBOSITY] config_path
+aws-starter -h
+```
+
+To start instances:
+
+```
+aws-starter [options] config_path
 ```
 
 Positional arguments:
