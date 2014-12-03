@@ -1,3 +1,11 @@
+aws-starter (0.7.0) unstable; urgency=low
+
+  * config: instance_type now can be defined for all instances at once;
+  * config: fix logic of max_wait_time setting;
+  * readme minor fix.
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Wed, 03 Dec 2014 13:39:00 +0200
+
 aws-starter (0.6.0-1) unstable; urgency=low
 
   * add --pause-on-error option;
