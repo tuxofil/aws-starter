@@ -46,11 +46,11 @@ region = us-west-2
 ## ID of a base Amazon Machine Instance which will
 ## used to start new instances
 ## No default value.
-#image_id = ami-***
+image_id = ami-***
 
 ## ID of a network which will be used to include new instances into
 ## No default value.
-#subnet_id = subnet-***
+subnet_id = subnet-***
 
 ## SSH key to use to access the instances.
 ## This means name of the SSH key, stored on the Amazon side.
@@ -62,7 +62,7 @@ region = us-west-2
 
 ## Maximum time (in minutes) to wait until new instance will be started.
 ## Default value is 120 (two minutes).
-max_wait_time = 120
+#max_wait_time = 120
 
 ## Path to script which will be executed immediately after the very
 ## first instance start
@@ -78,20 +78,20 @@ max_wait_time = 120
 ## When not defined, value of corresponding option from 'main'
 ## section will be tried.
 ## Default is t1.micro
-instance_type = t1.micro
+#instance_type = t1.micro
 
 ## ID of a base Amazon Machine Instance which will
 ## used to start new instances
 ## When not defined, value of corresponding option from 'main'
 ## section will be tried.
 ## No default value.
-image_id = ami-***
+#image_id = ami-***
 
 ## ID of a network which will be used to include new instances into
 ## When not defined, value of corresponding option from 'main'
 ## section will be tried.
 ## No default value.
-subnet_id = subnet-***
+#subnet_id = subnet-***
 
 ## SSH key to use to access the instances.
 ## This means name of the SSH key, stored on the Amazon side.
