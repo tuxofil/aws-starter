@@ -87,7 +87,7 @@ def launch_catched(*args):
 
 
 def launch(instance_name, instance_type, image_id, subnet_id,
-           max_wait_time = None, script = None, script_log = None,
+           max_wait_time, script = None, script_log = None,
            ssh_config = None, private_ip = None, ssh_key_name = None):
     """
     Launch a new instance.
@@ -104,7 +104,7 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     :type subnet_id: string
     :param max_wait_time: max time (in seconds) to wait for
         instance to start.
-    :type max_wait_time: integer or NoneType. Default is 120 (seconds).
+    :type max_wait_time: integer
     :param script: path to script to run on the instance after
         the very first start
     :type script: string or NoneType
@@ -203,7 +203,7 @@ def instance4log(instance_name):
          INSTANCES[instance_name].get('private_ip_address'))
 
 
-def wait_for_instance(instance, instance_id, max_wait_time = None):
+def wait_for_instance(instance, instance_id, max_wait_time):
     """
     Wait until the instance status become 'running'.
 
@@ -214,8 +214,6 @@ def wait_for_instance(instance, instance_id, max_wait_time = None):
     :param max_wait_time: max time to wait, in seconds
     :type max_wait_time: integer
     """
-    if max_wait_time is None:
-        max_wait_time = 120
     start_time = time.time()
     deadline = start_time + max_wait_time
     while True:
@@ -599,8 +597,7 @@ def parse_config_file(config_path):
     :type config_path: string
     """
     cfg = ConfigParser.RawConfigParser(
-        {'instance_type': 't1.micro',
-         'max_wait_time': '120'})
+        {'instance_type': 't1.micro'})
     cfg.read(config_path)
     VARS['ACCESS_KEY_ID'] = cfg.get('main', 'access_key_id')
     VARS['SECRET_ACCESS_KEY'] = cfg.get('main', 'secret_access_key')
@@ -613,8 +610,9 @@ def parse_config_file(config_path):
         subnet_id = getcfg(cfg, section, 'subnet_id', 'subnet_id')
         ssh_key_name = getcfg(cfg, section, 'ssh_key_name', 'ssh_key_name')
         private_ip = getcfg(cfg, section, 'private_ip')
-        max_wait_time = int(getcfg(cfg, section, 'max_wait_time',
-                                   'max_wait_time'))
+        max_wait_time = \
+            int(getcfg(cfg, section, 'max_wait_time', 'max_wait_time',
+                       default = '120'))
         INSTANCES[section] = \
             {'instance_type': cfg.get(section, 'instance_type'),
              'image_id': image_id,
