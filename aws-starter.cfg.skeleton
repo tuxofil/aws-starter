@@ -39,6 +39,10 @@ region = us-west-2
 ## The options below will be used only in case when corresponding option
 ## in per-instance configuration section is not set.
 
+## Instance type.
+## Default is t1.micro
+#instance_type = t1.micro
+
 ## ID of a base Amazon Machine Instance which will
 ## used to start new instances
 ## No default value.
@@ -71,6 +75,8 @@ max_wait_time = 120
 [node1]
 
 ## Instance type.
+## When not defined, value of corresponding option from 'main'
+## section will be tried.
 ## Default is t1.micro
 instance_type = t1.micro
 

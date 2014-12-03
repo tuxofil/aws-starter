@@ -606,6 +606,9 @@ def parse_config_file(config_path):
     for section in cfg.sections():
         if section == 'main':
             continue
+        instance_type = \
+            getcfg(cfg, section, 'instance_type', 'instance_type',
+                   default = 't1.micro')
         image_id = getcfg(cfg, section, 'image_id', 'image_id')
         subnet_id = getcfg(cfg, section, 'subnet_id', 'subnet_id')
         ssh_key_name = getcfg(cfg, section, 'ssh_key_name', 'ssh_key_name')
@@ -614,7 +617,7 @@ def parse_config_file(config_path):
             int(getcfg(cfg, section, 'max_wait_time', 'max_wait_time',
                        default = '120'))
         INSTANCES[section] = \
-            {'instance_type': cfg.get(section, 'instance_type'),
+            {'instance_type': instance_type,
              'image_id': image_id,
              'subnet_id': subnet_id,
              'max_wait_time': max_wait_time,
