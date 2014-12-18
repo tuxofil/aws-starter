@@ -31,10 +31,6 @@ VARS = {'ERROR_OCCURED': False,
 
 # Logging interface object
 LOGGER = logging.getLogger('AmazonStarter')
-logging.basicConfig(
-    format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    datefmt = '%Y-%m-%d %H:%M:%S',
-    level = 20)
 
 # where new instance IDs will be registered
 INSTANCES = {}
