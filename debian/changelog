@@ -1,3 +1,10 @@
+aws-starter (0.7.1) unstable; urgency=low
+
+  * config: fix interpretation of instance_type option;
+  * config: fix loglevel setting.
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Thu, 18 Dec 2014 20:03:00 +0200
+
 aws-starter (0.7.0) unstable; urgency=low
 
   * config: instance_type now can be defined for all instances at once;
