@@ -592,8 +592,7 @@ def parse_config_file(config_path):
     :param config_path: configuration file path
     :type config_path: string
     """
-    cfg = ConfigParser.RawConfigParser(
-        {'instance_type': 't1.micro'})
+    cfg = ConfigParser.RawConfigParser()
     cfg.read(config_path)
     VARS['ACCESS_KEY_ID'] = cfg.get('main', 'access_key_id')
     VARS['SECRET_ACCESS_KEY'] = cfg.get('main', 'secret_access_key')
