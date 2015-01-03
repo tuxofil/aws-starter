@@ -78,6 +78,14 @@ def launch_catched(*args):
     try:
         launch(*args)
     except Exception as exc:
+        # Mark configuration dict for the instance as failed.
+        # With the flag the main thread will distinguish
+        # failed instances from successfull after all spawned
+        # thread will be joined to the main thread.
+        INSTANCES[args[0]]['error'] = True
+        # A following global flag will work as a signal to
+        # all others spawned threads to stop working as soon
+        # as possible.
         VARS['ERROR_OCCURED'] = True
         LOGGER.exception(exc)
 
@@ -498,6 +506,21 @@ def main():
     for thread in threads:
         thread.join()
     LOGGER.info('MAIN> check launch results...')
+    # Check error statuses for each configured instance
+    error_occured = False
+    for instance_name in INSTANCES:
+        instance = INSTANCES[instance_name]
+        if instance.get('error', False):
+            LOGGER.critical(
+                '%s: an error occured during instance start',
+                instance4log(instance_name))
+            error_occured = True
+    if error_occured:
+        LOGGER.info(
+            'MAIN> there was the errors while starting the instances.'
+            ' Can not continue.')
+        sys.exit(1)
+    # Check if the instances is up and ready
     for instance_name in INSTANCES:
         instance = INSTANCES[instance_name]
         if not instance.get('ready', False):
