@@ -118,8 +118,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     """
     connection = connect()
     LOGGER.debug(
-        'launching %s from AMI %s (with subnet %s)...',
-        instance_type, image_id, subnet_id)
+        '%s: launching %s from AMI %s (with subnet %s)...',
+        instance_name, instance_type, image_id, subnet_id)
     reservation = connection.run_instances(
         image_id = image_id,
         key_name = ssh_key_name,
@@ -129,18 +129,22 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     instance = reservation.instances[0]
     INSTANCES[instance_name]['instance_id'] = instance.id
     LOGGER.info(
-        'launched %s at %s. Wait until it starts...',
-        instance.id, VARS['REGION_NAME'])
-    wait_for_instance(instance, instance.id, max_wait_time)
+        '%s: launched %s at %s. Wait until it starts...',
+        instance_name, instance.id, VARS['REGION_NAME'])
+    if not wait_for_instance(instance, max_wait_time):
+        LOGGER.error(
+            '%s: failed to start within %r seconds',
+            instance_name, max_wait_time)
+        raise InstanceLaunchError
     if VARS['ERROR_OCCURED']:
         return
-    LOGGER.info('instance %s started', instance.id)
+    LOGGER.info('%s: instance %s started', instance_name, instance.id)
     map_instance_to_ip_addrs(connection, instance_name, instance.id)
     if script is not None:
         wait_for_sshd(instance_name, max_wait_time)
         LOGGER.info(
-            'running script %r on the %s...',
-            script, instance4log(instance_name))
+            '%s: running script %r on the %s...',
+            instance_name, script, instance4log(instance_name))
         if not execute_script_remotely(
                 INSTANCES[instance_name]['ip_address'],
                 script, script_log, ssh_config):
@@ -167,8 +171,7 @@ def wait_for_sshd(instance_name, max_wait_time):
     :param max_wait_time: max time to wait, in seconds
     :type max_wait_time: integer
     """
-    LOGGER.info(
-        'wait for SSHD on %s...', instance4log(instance_name))
+    LOGGER.info('%s: wait for SSHD...', instance4log(instance_name))
     start_time = time.time()
     deadline = start_time + max_wait_time
     while True:
@@ -176,7 +179,7 @@ def wait_for_sshd(instance_name, max_wait_time):
             raise InstanceLaunchError
         if time.time() > deadline:
             LOGGER.error(
-                'timeout waiting for SSHD at %s within %r seconds',
+                '%s: timeout waiting for SSHD within %r seconds',
                 instance4log(instance_name), max_wait_time)
             raise InstanceLaunchError
         if ping_tcp(INSTANCES[instance_name]['ip_address'], 22):
@@ -192,34 +195,31 @@ def instance4log(instance_name):
     :type instance_name: string
     :rtype: string
     """
-    return '"%s" (id=%s, ip=%s, priv_ip=%s)' % \
+    return '%s (id=%s, ip=%s, priv_ip=%s)' % \
         (instance_name,
          INSTANCES[instance_name].get('instance_id'),
          INSTANCES[instance_name].get('ip_address'),
          INSTANCES[instance_name].get('private_ip_address'))
 
 
-def wait_for_instance(instance, instance_id, max_wait_time):
+def wait_for_instance(instance, max_wait_time):
     """
     Wait until the instance status become 'running'.
 
     :param instance: Amazon instance object
     :type instance: instance of boto.ec2.Instance
-    :param instance_id: Amazon instance unique ID
-    :type instance_id: string
     :param max_wait_time: max time to wait, in seconds
     :type max_wait_time: integer
+
+    :rtype: boolean
     """
     start_time = time.time()
     deadline = start_time + max_wait_time
     while True:
         if time.time() > deadline:
-            LOGGER.error(
-                'instance %s failed to start within %r seconds',
-                instance_id, max_wait_time)
-            raise InstanceLaunchError
+            return False
         if instance.update() == 'running':
-            break
+            return True
         time.sleep(5)
 
 
@@ -242,33 +242,33 @@ def map_instance_to_ip_addrs(connection, instance_name, instance_id):
                  if instance.id == instance_id]
     if len(instances) != 1:
         LOGGER.error(
-            'launched instance %s is not found',
-            instance_id)
+            '%s: launched instance %s is not found',
+            instance_name, instance_id)
         raise InstanceLaunchError
     # look for a private IP address
     private_ip_address = instances[0].private_ip_address
     if private_ip_address is None:
         LOGGER.error(
-            'failed to get private IP address for instance %s',
-            instance_id)
+            '%s: failed to get private IP address for instance %s',
+            instance_name, instance_id)
         raise InstanceLaunchError
     private_ip_address = str(private_ip_address)  # dispose of unicode string
     INSTANCES[instance_name]['private_ip_address'] = private_ip_address
     LOGGER.info(
-        'instance %s has private IP %s',
-        instance_id, private_ip_address)
+        '%s: instance %s has private IP %s',
+        instance_name, instance_id, private_ip_address)
     # look for a public IP address
     ip_address = instances[0].ip_address
     if ip_address is None:
         LOGGER.error(
-            'failed to get public IP address for instance %s',
-            instance_id)
+            '%s: failed to get public IP address for instance %s',
+            instance_name, instance_id)
         raise InstanceLaunchError
     ip_address = str(ip_address)  # dispose of unicode string
     INSTANCES[instance_name]['ip_address'] = ip_address
     LOGGER.info(
-        'instance %s has public IP %s',
-        instance_id, ip_address)
+        '%s: instance %s has public IP %s',
+        instance_name, instance_id, ip_address)
 
 
 def ping_tcp(host, port):
@@ -503,9 +503,8 @@ def main():
         if not instance.get('ready', False):
             VARS['ERROR_OCCURED'] = True
             LOGGER.critical(
-                'MAIN> instance %r is not ready (id=%r; ip=%r)',
-                instance_name, instance.get('instance_id'),
-                instance.get('ip_address'))
+                '%s: instance is not ready. Can not continue.',
+                instance4log(instance_name))
             sys.exit(1)
     LOGGER.info('MAIN> all instances is up and ready')
     # print instance addresses table
