@@ -616,9 +616,18 @@ def parse_config_file(config_path):
     """
     cfg = ConfigParser.RawConfigParser()
     cfg.read(config_path)
-    VARS['ACCESS_KEY_ID'] = cfg.get('main', 'access_key_id')
-    VARS['SECRET_ACCESS_KEY'] = cfg.get('main', 'secret_access_key')
-    VARS['REGION_NAME'] = cfg.get('main', 'region')
+    VARS['ACCESS_KEY_ID'] = getcfg(cfg, 'main', 'access_key_id')
+    if not VARS['ACCESS_KEY_ID']:
+        LOGGER.error('Mandatory Access Key ID is not defined')
+        sys.exit(1)
+    VARS['SECRET_ACCESS_KEY'] = getcfg(cfg, 'main', 'secret_access_key')
+    if not VARS['SECRET_ACCESS_KEY']:
+        LOGGER.error('Mandatory Secret Access Key is not defined')
+        sys.exit(1)
+    VARS['REGION_NAME'] = getcfg(cfg, 'main', 'region')
+    if not VARS['REGION_NAME']:
+        LOGGER.error('Mandatory Region Name is not defined')
+        sys.exit(1)
     LOGGER.debug('MAIN> parse the rest of the configuration file...')
     for section in cfg.sections():
         if section == 'main':
@@ -628,6 +637,14 @@ def parse_config_file(config_path):
                    default = 't1.micro')
         image_id = getcfg(cfg, section, 'image_id', 'image_id')
         subnet_id = getcfg(cfg, section, 'subnet_id', 'subnet_id')
+        if not image_id:
+            LOGGER.error(
+                '%s: mandatory Image ID is not set', section)
+            sys.exit(1)
+        if not subnet_id:
+            LOGGER.error(
+                '%s: mandatory Subnet ID is not set', section)
+            sys.exit(1)
         ssh_key_name = getcfg(cfg, section, 'ssh_key_name', 'ssh_key_name')
         private_ip = getcfg(cfg, section, 'private_ip')
         max_wait_time = \
