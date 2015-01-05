@@ -10,6 +10,7 @@ import argparse
 import atexit
 import ConfigParser
 import logging
+import os
 import os.path
 import socket
 import subprocess
@@ -616,27 +617,37 @@ def parse_config_file(config_path):
     """
     cfg = ConfigParser.RawConfigParser()
     cfg.read(config_path)
-    VARS['ACCESS_KEY_ID'] = getcfg(cfg, 'main', 'access_key_id')
+    VARS['ACCESS_KEY_ID'] = \
+        getcfg(cfg, 'main', 'access_key_id',
+               default = os.environ.get('ACCESS_KEY_ID'))
     if not VARS['ACCESS_KEY_ID']:
         LOGGER.error('Mandatory Access Key ID is not defined')
         sys.exit(1)
-    VARS['SECRET_ACCESS_KEY'] = getcfg(cfg, 'main', 'secret_access_key')
+    VARS['SECRET_ACCESS_KEY'] = \
+        getcfg(cfg, 'main', 'secret_access_key',
+               default = os.environ.get('SECRET_ACCESS_KEY'))
     if not VARS['SECRET_ACCESS_KEY']:
         LOGGER.error('Mandatory Secret Access Key is not defined')
         sys.exit(1)
-    VARS['REGION_NAME'] = getcfg(cfg, 'main', 'region')
+    VARS['REGION_NAME'] = \
+        getcfg(cfg, 'main', 'region',
+               default = os.environ.get('REGION'))
     if not VARS['REGION_NAME']:
         LOGGER.error('Mandatory Region Name is not defined')
         sys.exit(1)
     LOGGER.debug('MAIN> parse the rest of the configuration file...')
+    env_image_id = os.environ.get('IMAGE_ID')
+    env_subnet_id = os.environ.get('SUBNET_ID')
     for section in cfg.sections():
         if section == 'main':
             continue
         instance_type = \
             getcfg(cfg, section, 'instance_type', 'instance_type',
                    default = 't1.micro')
-        image_id = getcfg(cfg, section, 'image_id', 'image_id')
-        subnet_id = getcfg(cfg, section, 'subnet_id', 'subnet_id')
+        image_id = getcfg(cfg, section, 'image_id', 'image_id',
+                          default = env_image_id)
+        subnet_id = getcfg(cfg, section, 'subnet_id', 'subnet_id',
+                           default = env_subnet_id)
         if not image_id:
             LOGGER.error(
                 '%s: mandatory Image ID is not set', section)
