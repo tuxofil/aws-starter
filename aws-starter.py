@@ -227,9 +227,9 @@ def wait_for_instance(instance, max_wait_time):
     while True:
         if time.time() > deadline:
             return False
+        time.sleep(5)
         if instance.update() == 'running':
             return True
-        time.sleep(5)
 
 
 def map_instance_to_ip_addrs(connection, instance_name, instance_id):
