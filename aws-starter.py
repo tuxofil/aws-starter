@@ -31,7 +31,7 @@ VARS = {'ERROR_OCCURED': False,
         'NO_TERMINATE_ON_ERROR': False}
 
 # Logging interface object
-LOGGER = logging.getLogger('AmazonStarter')
+LOGGER = logging.getLogger('aws-starter')
 
 # where new instance IDs will be registered
 INSTANCES = {}
