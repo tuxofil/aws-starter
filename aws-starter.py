@@ -264,9 +264,6 @@ def map_instance_to_ip_addrs(connection, instance_name, instance_id):
         raise InstanceLaunchError
     private_ip_address = str(private_ip_address)  # dispose of unicode string
     INSTANCES[instance_name]['private_ip_address'] = private_ip_address
-    LOGGER.info(
-        '%s: instance %s has private IP %s',
-        instance_name, instance_id, private_ip_address)
     # look for a public IP address
     ip_address = instances[0].ip_address
     if ip_address is None:
@@ -276,9 +273,6 @@ def map_instance_to_ip_addrs(connection, instance_name, instance_id):
         raise InstanceLaunchError
     ip_address = str(ip_address)  # dispose of unicode string
     INSTANCES[instance_name]['ip_address'] = ip_address
-    LOGGER.info(
-        '%s: instance %s has public IP %s',
-        instance_name, instance_id, ip_address)
 
 
 def ping_tcp(host, port):
