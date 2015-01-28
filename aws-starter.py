@@ -151,9 +151,7 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     map_instance_to_ip_addrs(connection, instance_name, instance.id)
     if script is not None:
         wait_for_sshd(instance_name, max_wait_time)
-        LOGGER.info(
-            '%s: running script %r on the %s...',
-            instance_name, script, instance4log(instance_name))
+        LOGGER.info('%s: running script %r...', instance_name, script)
         if not execute_script_remotely(
                 INSTANCES[instance_name]['ip_address'],
                 script, script_log, ssh_config):
