@@ -169,6 +169,7 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         return
     # mark instance as up and ready with special flag field
     INSTANCES[instance_name]['ready'] = True
+    LOGGER.info('%s: ready', instance_name)
 
 
 def wait_for_sshd(instance_name, max_wait_time):
