@@ -474,7 +474,7 @@ def main():
         'info': 20,
         'debug': 10}
     logging.basicConfig(
-        format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        format = '%(asctime)s %(name)s %(levelname)1.1s %(message)s',
         datefmt = '%Y-%m-%d %H:%M:%S',
         level = verbosities.get(cmd_args.verbosity, 20))
     # read the configuration file
