@@ -317,18 +317,19 @@ def terminate_all():
         [INSTANCES[instance_name]['instance_id']
          for instance_name in INSTANCES
          if 'instance_id' in INSTANCES[instance_name]]
+    nice_instances = str(' '.join(instance_ids))
     if VARS['NO_TERMINATE'] and not VARS['ERROR_OCCURED']:
         LOGGER.warning(
-            'instances %r WILL NOT be terminated' % instance_ids)
+            'instances %s WILL NOT be terminated', nice_instances)
         return
     if VARS['NO_TERMINATE_ON_ERROR'] and VARS['ERROR_OCCURED']:
         LOGGER.warning(
-            'instances %r WILL NOT be terminated' % instance_ids)
+            'instances %s WILL NOT be terminated', nice_instances)
         return
     try:
         if len(instance_ids) > 0:
             connection = connect()
-            LOGGER.info('terminating instances: %r...', instance_ids)
+            LOGGER.info('terminating instances: %s', nice_instances)
             connection.terminate_instances(instance_ids)
             # deregister terminated instances
             for instance in INSTANCES:
@@ -339,8 +340,8 @@ def terminate_all():
             LOGGER.info('instances terminated')
     except Exception as exc:
         LOGGER.critical(
-            'failed to terminate instances %r: %r',
-            instance_ids, exc)
+            'failed to terminate instances %s: %r',
+            nice_instances, exc)
         LOGGER.exception(exc)
         sys.exit(1)
 
