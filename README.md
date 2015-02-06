@@ -1,5 +1,7 @@
 # Automation tool for Amazon AWS
 
+[![Join the chat at https://gitter.im/tuxofil/aws-starter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/tuxofil/aws-starter?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 Purpose:
 
 * start one or more Amazon instances;
