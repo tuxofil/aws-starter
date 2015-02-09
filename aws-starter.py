@@ -92,7 +92,8 @@ def launch_catched(*args):
 
 
 def launch(instance_name, instance_type, image_id, subnet_id,
-           max_wait_time, script = None, script_log = None,
+           max_wait_time, upload_file = None, upload_dir = None,
+           script = None, script_log = None,
            ssh_config = None, private_ip = None, ssh_key_name = None):
     """
     Launch a new instance.
@@ -110,6 +111,14 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     :param max_wait_time: max time (in seconds) to wait for
         instance to start.
     :type max_wait_time: integer
+    :param upload_file: Path to a local file which will be uploaded
+        to the instance immediately after instance start and before
+        the first-start script execution.
+    :type upload_file: string or NoneType
+    :param upload_dir: Path to a local directory which will be uploaded
+        to the instance immediately after instance start and before
+        the first-start script execution.
+    :type upload_dir: string or NoneType
     :param script: path to script to run on the instance after
         the very first start
     :type script: string or NoneType
@@ -149,12 +158,36 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         return
     LOGGER.info('%s: instance %s started', instance_name, instance.id)
     map_instance_to_ip_addrs(connection, instance_name, instance.id)
+    wait_for_sshd(instance_name, max_wait_time)
+    instance_ip = INSTANCES[instance_name]['ip_address']
+    if upload_file is not None:
+        LOGGER.info('%s: uploading file %r...', instance_name, upload_file)
+        if not scp(upload_file, instance_ip + ':',
+                   script_log, ssh_config):
+            LOGGER.error(
+                '%s: failed to upload file %r',
+                instance4log(instance_name), upload_file)
+            if script_log is not None:
+                LOGGER.error(
+                    '%s: see details in log file: %r',
+                    instance4log(instance_name), script_log)
+            raise InstanceLaunchError
+    if upload_dir is not None:
+        LOGGER.info('%s: uploading dir %r...', instance_name, upload_dir)
+        if not scp(upload_dir, instance_ip + ':',
+                   script_log, ssh_config, recursive = True):
+            LOGGER.error(
+                '%s: failed to upload dir %r',
+                instance4log(instance_name), upload_dir)
+            if script_log is not None:
+                LOGGER.error(
+                    '%s: see details in log file: %r',
+                    instance4log(instance_name), script_log)
+            raise InstanceLaunchError
     if script is not None:
-        wait_for_sshd(instance_name, max_wait_time)
         LOGGER.info('%s: running script %r...', instance_name, script)
         if not execute_script_remotely(
-                INSTANCES[instance_name]['ip_address'],
-                script, script_log, ssh_config):
+                instance_ip, script, script_log, ssh_config):
             LOGGER.error(
                 '%s: failed to run script %r',
                 instance4log(instance_name), script)
@@ -395,7 +428,8 @@ def ssh(host, command, script_log = None, ssh_config = None):
 
 
 def scp(source_path, destination_path,
-        script_log = None, ssh_config = None):
+        script_log = None, ssh_config = None,
+        recursive = False):
     """
     Invocate SCP process.
     Return True if subprocess exited with 0 exit code and False otherwise.
@@ -409,11 +443,15 @@ def scp(source_path, destination_path,
     :type script_log: string or NoneType
     :param ssh_config: path to SSH config file
     :type ssh_config: string or NoneType
+    :param recursive: use '-r' command line option or not.
+    :type recursive: boolean. Default is False.
     :rtype: boolean
     """
     final_command = ['scp']
     if ssh_config is not None:
         final_command += ['-F', ssh_config]
+    if recursive:
+        final_command += ['-r']
     return cmd(final_command + [source_path, destination_path], script_log)
 
 
@@ -491,7 +529,8 @@ def main():
             target = launch_catched,
             args = [instance_name, args['instance_type'],
                     args['image_id'], args['subnet_id'],
-                    args['max_wait_time'], args['script'],
+                    args['max_wait_time'], args['upload_file'],
+                    args['upload_dir'], args['script'],
                     args['script_log'], args['ssh_config'],
                     args['requested_private_ip'],
                     args['ssh_key_name']])
@@ -660,6 +699,8 @@ def parse_config_file(config_path):
              'image_id': image_id,
              'subnet_id': subnet_id,
              'max_wait_time': max_wait_time,
+             'upload_file': getcfg(cfg, section, 'upload_file', 'upload_file'),
+             'upload_dir': getcfg(cfg, section, 'upload_dir', 'upload_dir'),
              'script': getcfg(cfg, section, 'script', 'script'),
              'script_log': getcfg(cfg, section, 'script_log'),
              'ssh_config': getcfg(cfg, 'main', 'ssh_config'),
