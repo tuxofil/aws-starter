@@ -13,13 +13,13 @@ Purpose:
 
 To show usage help:
 
-```
+```sh
 aws-starter -h
 ```
 
 To start instances:
 
-```
+```sh
 aws-starter [options] config_path
 ```
 
@@ -44,3 +44,18 @@ Optional arguments:
 * _-v VERBOSITY, --verbosity VERBOSITY_ - Verbosity level.
  Default is "info". Possible values are: "debug", "info",
  "warning", "error", "critical".
+
+## Instance features
+
+Each instance started with _aws-starter_ have the following features:
+
+* _instance_initiated_shutdown_behaviour_ option is set to
+ _terminate_ which means the instance will be terminated after
+ a shutdown initiated within the instance (i.e. by ```poweroff```
+ command line tool);
+* a set of standard tags will be set, e.g.
+  * _Name_ - instance name defined in the ```aws-starter.cfg``` file;
+  * _StartedBy_ - effective user name and short hostname where
+   the aws-starter tool was launched;
+  * _StarterProg_ - 'aws-starter';
+  * _StarterHost_ - ```uname -a``` string.
