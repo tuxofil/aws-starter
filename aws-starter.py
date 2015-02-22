@@ -12,6 +12,7 @@ import ConfigParser
 import logging
 import os
 import os.path
+import pwd
 import socket
 import subprocess
 import sys
@@ -157,6 +158,15 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     if VARS['ERROR_OCCURED']:
         return
     LOGGER.info('%s: instance %s started', instance_name, instance.id)
+    connection.create_tags(
+        [instance.id],
+        {'Name': instance_name,
+         'StartedBy':
+             '%s at %s' % (pwd.getpwuid(os.getuid())[0],
+                           socket.gethostname()),
+         'StarterProg': 'aws-starter',
+         'StarterHost': ' '.join(os.uname())})
+    LOGGER.info('%s: instance %s tagged', instance_name, instance.id)
     map_instance_to_ip_addrs(connection, instance_name, instance.id)
     wait_for_sshd(instance_name, max_wait_time)
     instance_ip = INSTANCES[instance_name]['ip_address']
