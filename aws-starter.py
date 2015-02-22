@@ -144,7 +144,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         key_name = ssh_key_name,
         instance_type = instance_type,
         subnet_id = subnet_id,
-        private_ip_address = private_ip)
+        private_ip_address = private_ip,
+        instance_initiated_shutdown_behavior = 'terminate')
     instance = reservation.instances[0]
     INSTANCES[instance_name]['instance_id'] = instance.id
     LOGGER.info(
