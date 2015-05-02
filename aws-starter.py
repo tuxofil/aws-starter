@@ -163,9 +163,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     connection.create_tags(
         [instance.id],
         {'Name': instance_name,
-         'StartedBy':
-             '%s at %s' % (pwd.getpwuid(os.getuid())[0],
-                           socket.gethostname()),
+         'StartedBy': '%s at %s' % (pwd.getpwuid(os.getuid())[0],
+                                    socket.gethostname()),
          'StarterProg': 'aws-starter',
          'StarterHost': ' '.join(os.uname())})
     LOGGER.info('%s: instance %s tagged', instance_name, instance.id)
