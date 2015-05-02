@@ -16,8 +16,9 @@ import pwd
 import socket
 import subprocess
 import sys
-import time
 import threading
+import time
+
 import boto
 import boto.ec2
 
