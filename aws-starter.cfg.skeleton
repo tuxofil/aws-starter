@@ -52,6 +52,18 @@ region = us-west-2
 ## No default value.
 #super_log = logs/main.log
 
+## A path for a local file to which instance IDs will be written.
+## Note the file will be truncated each aws-starter launch.
+## The file can be used to store the launched instance IDs between
+## aws-starter invocations, e.g. on the first launch the aws-starter
+## creates a couple of Amazon instances, writes their IDs into the file
+## and exits (with --no-terminate command line option).
+## When the user decides to destroy the instances, it runs aws-starter
+## with --stop command line option, aws-starter reads instance IDs from
+## the file and terminates the instances.
+## No default value.
+#instance_ids_path = aws-starter.instance_ids
+
 ## The options below will be used only in case when corresponding option
 ## in per-instance configuration section is not set.
 

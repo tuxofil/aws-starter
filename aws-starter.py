@@ -529,6 +529,12 @@ def main():
         level = verbosities.get(cmd_args.verbosity, 20))
     # read the configuration file
     config = parse_config_file(cmd_args.config_path)
+    if cmd_args.stop:
+        # Do not run any instances, just read instance IDs
+        # from the path defined in 'instance_ids_path' configuration
+        # option (from the config file), terminate them all
+        # and immediately exit.
+        main_stop_mode(config)
     # setup termination hook
     atexit.register(terminate_all)
     atexit.register(pause_if_requested)
@@ -607,6 +613,62 @@ def main():
                 LOGGER.error(
                     'MAIN> see %r for details', config['super_log'])
             sys.exit(1)
+    save_instance_ids(config['instance_ids_path'])
+
+
+def save_instance_ids(path):
+    """
+    Write instance IDs into a local file, if path is set.
+
+    :param path: path to a local file.
+    :type path: string or None
+    """
+    if path is None:
+        # Do nothing
+        return
+    instance_ids = \
+        [INSTANCES[instance_name]['instance_id']
+         for instance_name in INSTANCES
+         if 'instance_id' in INSTANCES[instance_name]]
+    LOGGER.info('writing instance IDs into %s file...', path)
+    with open(path, 'w') as fdescr:
+        fdescr.write('%s\n' % '\n'.join(instance_ids))
+    LOGGER.info('instance IDs written to %s file', path)
+
+
+def main_stop_mode(config):
+    """
+    Do STOP mode: read instance IDs from a local file,
+    defined in 'instance_ids_path' configuration option
+    (from the config file), terminate them all and
+    immediately exit.
+
+    :param config: parsed configuration file
+    :type config: dict, as return parse_config_file() function.
+    """
+    LOGGER.info('STOP mode initiated. Read instance IDs from'
+                ' file and terminate them.')
+    instance_ids_path = config['instance_ids_path']
+    if instance_ids_path is None:
+        LOGGER.error('instance_ids_path configuration'
+                     ' option is not defined.\n')
+        sys.exit(1)
+    try:
+        with open(instance_ids_path) as fdescr:
+            instance_ids = fdescr.read().split()
+    except IOError as exc:
+        LOGGER.error('unable to read %s: %r.\n',
+                     instance_ids_path, exc)
+        raise
+    if not len(instance_ids):
+        LOGGER.error('no instance IDs was found in %s.\n',
+                     instance_ids_path)
+        sys.exit(1)
+    nice_instances = str(' '.join(instance_ids))
+    LOGGER.info('terminating instances: %s', nice_instances)
+    connect().terminate_instances(instance_ids)
+    LOGGER.info('instances terminated')
+    sys.exit(0)
 
 
 def parse_cmd_args():
@@ -640,6 +702,12 @@ def parse_cmd_args():
         help = 'do not terminate the instances after an error has'
         ' been occured. This is useful to make able the user to'
         ' investigate the problem on the instances.')
+    parser.add_argument(
+        '--stop',
+        action = 'store_true',
+        help = 'do not start any instances, just read instance IDs'
+        ' from the file defined in the "instance_ids_path" configuration'
+        ' option, terminate them all and exit immediately.')
     parser.add_argument(
         '-v', '--verbosity',
         default = 'warn',
@@ -720,6 +788,7 @@ def parse_config_file(config_path):
              'requested_private_ip': private_ip,
              'ssh_key_name': ssh_key_name}
     return {
+        'instance_ids_path': getcfg(cfg, 'main', 'instance_ids_path'),
         'super_script': getcfg(cfg, 'main', 'super_script'),
         'super_log': getcfg(cfg, 'main', 'super_log'),
         'ssh_config': getcfg(cfg, 'main', 'ssh_config')}

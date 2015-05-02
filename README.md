@@ -41,6 +41,10 @@ Optional arguments:
 * _--no-terminate-on-error_ - Do not terminate the instances
  after an error has been occured. This is useful to make able
  the user to investigate the problem on the instances.
+* _--stop_ - do not start any instances. Read instance IDs
+ from a local file, defined in a 'instance_ids_path' configuration
+ option, terminate them all and exit. See description of
+ 'instance_ids_path' configuration option for more details;
 * _-v VERBOSITY, --verbosity VERBOSITY_ - Verbosity level.
  Default is "info". Possible values are: "debug", "info",
  "warning", "error", "critical".
