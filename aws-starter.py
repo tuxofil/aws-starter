@@ -658,6 +658,8 @@ def parse_config_file(config_path):
 
     :param config_path: configuration file path
     :type config_path: string
+
+    :rtype: dict
     """
     cfg = ConfigParser.RawConfigParser()
     cfg.read(config_path)
