@@ -35,7 +35,17 @@ region = us-west-2
 ## Path to SSH configuration file which will used during accessing
 ## instances with SSH and SCP tools.
 ## No default value.
-#ssh_config = .ssh/config
+#ssh_config = .ssh/config.template
+
+## Path to a generated SSH configuration file for accessing
+## created instances by hand from command line.
+## The file will contain all contents of .ssh/config plus
+## sections for each instance created. So with the config
+## you can SSH into an arbitrary instance by supplying only
+## the name of the instance, like:
+##   ssh -F ssh/config node1
+## No default value (no file will be created)
+#generated_ssh_config = .ssh/config
 
 ## Script which will be executed on the local side after
 ## the all instances become ready.

@@ -593,6 +593,10 @@ def main():
              INSTANCES[instance_name]['instance_id'],
              INSTANCES[instance_name]['private_ip_address'],
              INSTANCES[instance_name]['ip_address']))
+    # Write new SSH configuration file which contain
+    # records for all launched instances
+    generate_ssh_config(config['ssh_config'],
+                        config['generated_ssh_config'])
     # launch super script if defined
     if config['super_script'] is not None:
         LOGGER.info(
@@ -634,6 +638,50 @@ def save_instance_ids(path):
     with open(path, 'w') as fdescr:
         fdescr.write('%s\n' % '\n'.join(instance_ids))
     LOGGER.info('instance IDs written to %s file', path)
+
+
+def generate_ssh_config(ssh_config, generated_ssh_config):
+    """
+    Generate a new SSH configuration file if path for the file
+    is defined in the aws-starter configuration file
+    (generated_ssh_config option in the 'main' section).
+
+    :param ssh_config: path to main SSH configuration file,
+        defined by the aws-starter configuration file.
+    :type ssh_config: string or None
+
+    :param generated_ssh_config: path to generated SSH
+        configuration file, defined by the aws-starter
+        configuration file.
+    :type generated_ssh_config: string or None
+    """
+    if generated_ssh_config is None:
+        # nothing to do
+        return
+    LOGGER.info('generating a new SSH config at %r...',
+                generated_ssh_config)
+    # Read the contents of the main SSH config
+    ssh_config_contents = ''
+    if ssh_config is not None:
+        with open(ssh_config) as fdescr:
+            ssh_config_contents = fdescr.read()
+    # Generate new SSH config
+    generated_contents = ssh_config_contents
+    for instance_name in INSTANCES:
+        instance_ip = INSTANCES[instance_name]['ip_address']
+        generated_contents += \
+            '\nHost %s\n    Hostname %s\n' % \
+            (instance_name, instance_ip)
+    # Try to write a generated SSH config
+    try:
+        with open(generated_ssh_config, 'w') as fdescr:
+            fdescr.write(generated_contents)
+        LOGGER.info('generated new SSH config at %r',
+                    generated_ssh_config)
+    except Exception as exc:
+        # not a fatal error
+        LOGGER.warning('failed to write %r: %r',
+                       generated_ssh_config, exc)
 
 
 def main_stop_mode(config):
@@ -791,7 +839,8 @@ def parse_config_file(config_path):
         'instance_ids_path': getcfg(cfg, 'main', 'instance_ids_path'),
         'super_script': getcfg(cfg, 'main', 'super_script'),
         'super_log': getcfg(cfg, 'main', 'super_log'),
-        'ssh_config': getcfg(cfg, 'main', 'ssh_config')}
+        'ssh_config': getcfg(cfg, 'main', 'ssh_config'),
+        'generated_ssh_config': getcfg(cfg, 'main', 'generated_ssh_config')}
 
 
 def getcfg(cfg, section, item, main_item = None, default = None):
