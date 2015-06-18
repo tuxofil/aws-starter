@@ -93,7 +93,7 @@ def launch_catched(*args):
         LOGGER.exception(exc)
 
 
-def launch(instance_name, instance_type, image_id, subnet_id,
+def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
            max_wait_time, upload_file = None, upload_dir = None,
            script = None, script_log = None,
            ssh_config = None, private_ip = None, ssh_key_name = None):
@@ -106,6 +106,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
     :type instance_name: string
     :param instance_type: Amazon instance type to launch
     :type instance_type: string
+    :param is_dedicated: will instance be dedicated or not.
+    :type is_dedicated: boolean
     :param image_id: base AMI ID to launch instance from
     :type image_id: string
     :param subnet_id: Amazon Subnet ID to associate with the instance
@@ -146,7 +148,8 @@ def launch(instance_name, instance_type, image_id, subnet_id,
         instance_type = instance_type,
         subnet_id = subnet_id,
         private_ip_address = private_ip,
-        instance_initiated_shutdown_behavior = 'terminate')
+        instance_initiated_shutdown_behavior = 'terminate',
+        tenancy = 'dedicated' if is_dedicated else 'default')
     instance = reservation.instances[0]
     INSTANCES[instance_name]['instance_id'] = instance.id
     LOGGER.info(
@@ -545,6 +548,7 @@ def main():
         thread = threading.Thread(
             target = launch_catched,
             args = [instance_name, args['instance_type'],
+                    args['is_dedicated'],
                     args['image_id'], args['subnet_id'],
                     args['max_wait_time'], args['upload_file'],
                     args['upload_dir'], args['script'],
@@ -806,6 +810,8 @@ def parse_config_file(config_path):
         instance_type = \
             getcfg(cfg, section, 'instance_type', 'instance_type',
                    default = 't1.micro')
+        is_dedicated = getcfg(cfg, section, 'is_dedicated', 'is_dedicated', 'no')
+        is_dedicated = str_to_boolean(is_dedicated)
         image_id = getcfg(cfg, section, 'image_id', 'image_id',
                           default = env_image_id)
         subnet_id = getcfg(cfg, section, 'subnet_id', 'subnet_id',
@@ -825,6 +831,7 @@ def parse_config_file(config_path):
                        default = '120'))
         INSTANCES[section] = \
             {'instance_type': instance_type,
+             'is_dedicated': is_dedicated,
              'image_id': image_id,
              'subnet_id': subnet_id,
              'max_wait_time': max_wait_time,
@@ -870,6 +877,20 @@ def getcfg(cfg, section, item, main_item = None, default = None):
         if main_item is not None:
             return getcfg(cfg, 'main', item, default = default)
         return default
+
+
+def str_to_boolean(string):
+    """
+    Cast string to boolean value.
+    'y', 'yes', '1', 'true', 't' will be casted to True, all other
+    values - to False.
+
+    :param string: string to cast.
+    :type string: string
+
+    :rtype: boolean
+    """
+    return string.lower() in ('y', 'yes', '1', 'true', 't')
 
 
 def substitute_macros(infile, outfile, ssh_config):

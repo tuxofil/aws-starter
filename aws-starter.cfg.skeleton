@@ -74,12 +74,22 @@ region = us-west-2
 ## No default value.
 #instance_ids_path = aws-starter.instance_ids
 
+##
+##
 ## The options below will be used only in case when corresponding option
 ## in per-instance configuration section is not set.
+##
+##
 
 ## Instance type.
 ## Default is t1.micro
 #instance_type = t1.micro
+
+## Will instance be dedicated or not. Dedicated instance will not
+## share real CPU with neighbour instances.
+## Valid values are: yes, no.
+## Default is no.
+#is_dedicated = no
 
 ## ID of a base Amazon Machine Instance which will
 ## used to start new instances
@@ -135,6 +145,12 @@ subnet_id = subnet-***
 ## section will be tried.
 ## Default is t1.micro
 #instance_type = t1.micro
+
+## Will instance be dedicated or not. Dedicated instance will not
+## share real CPU with neighbour instances.
+## Valid values are: yes, no.
+## Default is no.
+#is_dedicated = no
 
 ## ID of a base Amazon Machine Instance which will
 ## used to start new instances
