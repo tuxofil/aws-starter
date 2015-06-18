@@ -1,3 +1,9 @@
+aws-starter (0.13.1) unstable; urgency=low
+
+  * add 'is_dedicated' configuration option for instances.
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Thu, 18 Jun 2015 19:50:00 +0300
+
 aws-starter (0.12.0) unstable; urgency=low
 
   * add 'generated_ssh_config' configuration option.
