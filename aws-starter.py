@@ -902,7 +902,8 @@ def substitute_macros(infile, outfile, ssh_config):
      - {{SSH|nodename}} -> "ssh node_ip" or "ssh -F ssh_config node_ip";
      - {{SCP}} -> "scp" or "scp -F ssh_config";
      - {{PRIV_IP|nodename}} -> instance_private_ip;
-     - {{IP|nodename}} -> instance_public_ip.
+     - {{IP|nodename}} -> instance_public_ip;
+     - {{ID|nodename}} -> Amazon AWS instance ID.
 
     :param infile: path to super script template.
     :type infile: string
@@ -935,6 +936,9 @@ def substitute_macros(infile, outfile, ssh_config):
         # replace {{IP|nodename}} macros
         body = body.replace(('{{IP|%s}}' % instance_name),
                             instance['ip_address'])
+        # replace {{ID|nodename}} macros
+        body = body.replace(('{{ID|%s}}' % instance_name),
+                            instance['instance_id'])
     with open(outfile, 'w') as fdescr:
         fdescr.write(body)
     os.chmod(outfile, 0755)

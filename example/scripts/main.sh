@@ -18,3 +18,6 @@ curl -v "http://{{IP|node2}}/"
 
 # play with instance private IPs
 echo "Private address of node1 is {{PRIV_IP|node1}}"
+
+# Print Amazon AWS ID of the instance 'node1':
+echo "Amazon AWS instance ID for node1 is {{ID|node1}}"
