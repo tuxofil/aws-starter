@@ -1,0 +1,6 @@
+User root
+StrictHostKeyChecking no
+UserKnownHostsFile /dev/null
+IdentityFile ssh/access-key.pem
+BatchMode yes
+LogLevel ERROR
