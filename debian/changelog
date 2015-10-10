@@ -1,3 +1,15 @@
+aws-starter (0.14.0) unstable; urgency=low
+
+  * add new example: long live Apache2 instance
+  * move example to "examples" subdir
+  * example: use "generated_ssh_config" feature
+  * improve docs in example configs
+  * deb pkg: simplify staged installation
+  * Introduce new macro: {{ID|nodename}}
+  * upgrade example config file
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Sat, 10 Oct 2015 14:26:07 +0300
+
 aws-starter (0.13.1) unstable; urgency=low
 
   * add 'is_dedicated' configuration option for instances.
