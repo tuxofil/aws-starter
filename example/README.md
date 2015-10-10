@@ -13,5 +13,5 @@ Before you test you must:
 To start:
 
 ```
-/path/to/aws-starter.py aws-starter.cfg
+/path/to/aws-starter aws-starter.cfg
 ```

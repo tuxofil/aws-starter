@@ -1,0 +1,3 @@
+aws-starter /usr/bin
+aws-starter.cfg.skeleton /usr/share/aws-starter
+example /usr/share/aws-starter

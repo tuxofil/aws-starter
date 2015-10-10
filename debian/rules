@@ -6,12 +6,3 @@ export DH_OPTIONS
 
 %:
 	dh $@
-
-# Implement staged installation
-DESTDIR = debian/aws-starter
-override_dh_install:
-	install -m 755 -d $(DESTDIR)/usr/bin
-	install -m 755 aws-starter.py $(DESTDIR)/usr/bin/aws-starter
-	install -m 755 -d $(DESTDIR)/usr/share/aws-starter
-	cp -r example $(DESTDIR)/usr/share/aws-starter
-	install -m 644 aws-starter.cfg.skeleton $(DESTDIR)/usr/share/aws-starter
