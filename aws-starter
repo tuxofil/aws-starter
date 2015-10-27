@@ -143,9 +143,14 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     :rtype: (string, string) or NoneType
     """
     connection = connect()
+    nice_disk_size = 'default'
+    if disk_size is not None:
+        nice_disk_size = '%dGB' % disk_size
     LOGGER.debug(
-        '%s: launching %s from AMI %s (with subnet %s)...',
-        instance_name, instance_type, image_id, subnet_id)
+        '%s: launching %s from AMI %s in %s'
+        ' (with subnet %s and %s disk size)...',
+        instance_name, instance_type, image_id,
+        VARS['REGION_NAME'], subnet_id, nice_disk_size)
     image_bdm = connection.get_image(image_id).block_device_mapping
     bdm = None
     if disk_size is not None:
@@ -153,6 +158,8 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
         bdt.size = disk_size
         bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
         bdm[image_bdm.keys()[0]] = bdt
+    else:
+        nice_disk_size = '%dGB (default)' % image_bdm[image_bdm.keys()[0]].size
     reservation = connection.run_instances(
         image_id = image_id,
         key_name = ssh_key_name,
@@ -165,8 +172,10 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     instance = reservation.instances[0]
     INSTANCES[instance_name]['instance_id'] = instance.id
     LOGGER.info(
-        '%s: launched %s at %s. Wait until it starts...',
-        instance_name, instance.id, VARS['REGION_NAME'])
+        '%s: launched %s at %s with %s disk size.'
+        ' Wait until it starts...',
+        instance_name, instance.id, VARS['REGION_NAME'],
+        nice_disk_size)
     if not wait_for_instance(instance, max_wait_time):
         LOGGER.error(
             '%s: failed to start within %r seconds',
