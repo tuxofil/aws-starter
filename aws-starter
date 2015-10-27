@@ -21,6 +21,7 @@ import time
 
 import boto
 import boto.ec2
+import boto.ec2.blockdevicemapping
 
 
 # ----------------------------------------------------------------------
@@ -96,7 +97,8 @@ def launch_catched(*args):
 def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
            max_wait_time, upload_file = None, upload_dir = None,
            script = None, script_log = None,
-           ssh_config = None, private_ip = None, ssh_key_name = None):
+           ssh_config = None, private_ip = None, ssh_key_name = None,
+           disk_size = None):
     """
     Launch a new instance.
     On success return tuple of an instance ID and instance public IP.
@@ -136,16 +138,26 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     :param ssh_key_name: name of the SSH key on the Amazon side
         to access to the instance.
     :type ssh_key_name: string or NoneType
+    :param disk_size: root FS disk size, in gigabytes.
+    :type disk_size: integer or NoneType
     :rtype: (string, string) or NoneType
     """
     connection = connect()
     LOGGER.debug(
         '%s: launching %s from AMI %s (with subnet %s)...',
         instance_name, instance_type, image_id, subnet_id)
+    image_bdm = connection.get_image(image_id).block_device_mapping
+    bdm = None
+    if disk_size is not None:
+        bdt = boto.ec2.blockdevicemapping.BlockDeviceType()
+        bdt.size = disk_size
+        bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
+        bdm[image_bdm.keys()[0]] = bdt
     reservation = connection.run_instances(
         image_id = image_id,
         key_name = ssh_key_name,
         instance_type = instance_type,
+        block_device_map = bdm,
         subnet_id = subnet_id,
         private_ip_address = private_ip,
         instance_initiated_shutdown_behavior = 'terminate',
@@ -554,7 +566,7 @@ def main():
                     args['upload_dir'], args['script'],
                     args['script_log'], args['ssh_config'],
                     args['requested_private_ip'],
-                    args['ssh_key_name']])
+                    args['ssh_key_name'], args['disk_size']])
         thread.start()
         threads.append(thread)
     LOGGER.info('MAIN> wait for the threads...')
@@ -824,6 +836,12 @@ def parse_config_file(config_path):
             LOGGER.error(
                 '%s: mandatory Subnet ID is not set', section)
             sys.exit(1)
+        disk_size = getcfg(cfg, section, 'disk_size', 'disk_size')
+        if disk_size is not None:
+            disk_size = int(disk_size)
+            if disk_size < 1:
+                LOGGER.error('%s: invalid disk size: %r', section, disk_size)
+                sys.exit(1)
         ssh_key_name = getcfg(cfg, section, 'ssh_key_name', 'ssh_key_name')
         private_ip = getcfg(cfg, section, 'private_ip')
         max_wait_time = \
@@ -841,7 +859,8 @@ def parse_config_file(config_path):
              'script_log': getcfg(cfg, section, 'script_log'),
              'ssh_config': getcfg(cfg, 'main', 'ssh_config'),
              'requested_private_ip': private_ip,
-             'ssh_key_name': ssh_key_name}
+             'ssh_key_name': ssh_key_name,
+             'disk_size': disk_size}
     return {
         'instance_ids_path': getcfg(cfg, 'main', 'instance_ids_path'),
         'super_script': getcfg(cfg, 'main', 'super_script'),

@@ -103,6 +103,11 @@ image_id = ami-***
 ## If not set, a SUBNET_ID environment variable will be used.
 subnet_id = subnet-***
 
+## Hard disk size, in gigabytes.
+## If not set, default disk size, defined by AMI will be used.
+## No default value.
+#disk_size = 10
+
 ## SSH key to use to access the instances.
 ## This means name of the SSH key, stored on the Amazon side.
 ## If not set, you will not be able to login into the instances
@@ -167,6 +172,13 @@ subnet_id = subnet-***
 ## the SUBNET_ID environment variable will be used.
 ## No default value.
 #subnet_id = subnet-***
+
+## Hard disk size, in gigabytes.
+## When not defined, value of corresponding option from 'main'
+## section will be tried. If not found in the 'main' section,
+## default disk size, defined by AMI will be used.
+## No default value.
+#disk_size = 10
 
 ## SSH key to use to access the instances.
 ## This means name of the SSH key, stored on the Amazon side.
