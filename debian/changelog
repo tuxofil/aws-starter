@@ -1,3 +1,11 @@
+aws-starter (0.15.1) unstable; urgency=low
+
+  * logging: replace dots with ellipsis
+  * improve logging during instance launch
+  * introduce 'disk_size' cfg option for Amazon instances
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Tue, 27 Oct 2015 17:02:27 +0200
+
 aws-starter (0.14.0) unstable; urgency=low
 
   * add new example: long live Apache2 instance
