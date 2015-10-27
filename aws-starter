@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# coding=utf8
 
 """
 Launch some Amazon instances, do some work
@@ -57,8 +58,7 @@ def connect():
 
     :rtype: instance of boto.ec2.Connection
     """
-    LOGGER.debug(
-        'connecting to %s region...', VARS['REGION_NAME'])
+    LOGGER.debug(u'connecting to %s region…', VARS['REGION_NAME'])
     # search region info
     region_info = None
     for region in boto.ec2.regions():
@@ -147,8 +147,8 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     if disk_size is not None:
         nice_disk_size = '%dGB' % disk_size
     LOGGER.debug(
-        '%s: launching %s from AMI %s in %s'
-        ' (with subnet %s and %s disk size)...',
+        u'%s: launching %s from AMI %s in %s'
+        u' (with subnet %s and %s disk size)…',
         instance_name, instance_type, image_id,
         VARS['REGION_NAME'], subnet_id, nice_disk_size)
     image_bdm = connection.get_image(image_id).block_device_mapping
@@ -172,8 +172,8 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     instance = reservation.instances[0]
     INSTANCES[instance_name]['instance_id'] = instance.id
     LOGGER.info(
-        '%s: launched %s at %s with %s disk size.'
-        ' Wait until it starts...',
+        u'%s: launched %s at %s with %s disk size.'
+        u' Wait until it starts…',
         instance_name, instance.id, VARS['REGION_NAME'],
         nice_disk_size)
     if not wait_for_instance(instance, max_wait_time):
@@ -196,7 +196,7 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     wait_for_sshd(instance_name, max_wait_time)
     instance_ip = INSTANCES[instance_name]['ip_address']
     if upload_file is not None:
-        LOGGER.info('%s: uploading file %r...', instance_name, upload_file)
+        LOGGER.info(u'%s: uploading file %r…', instance_name, upload_file)
         if not scp(upload_file, instance_ip + ':',
                    script_log, ssh_config):
             LOGGER.error(
@@ -208,7 +208,7 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
                     instance4log(instance_name), script_log)
             raise InstanceLaunchError
     if upload_dir is not None:
-        LOGGER.info('%s: uploading dir %r...', instance_name, upload_dir)
+        LOGGER.info(u'%s: uploading dir %r…', instance_name, upload_dir)
         if not scp(upload_dir, instance_ip + ':',
                    script_log, ssh_config, recursive = True):
             LOGGER.error(
@@ -220,7 +220,7 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
                     instance4log(instance_name), script_log)
             raise InstanceLaunchError
     if script is not None:
-        LOGGER.info('%s: running script %r...', instance_name, script)
+        LOGGER.info(u'%s: running script %r…', instance_name, script)
         if not execute_script_remotely(
                 instance_ip, script, script_log, ssh_config):
             LOGGER.error(
@@ -247,7 +247,7 @@ def wait_for_sshd(instance_name, max_wait_time):
     :param max_wait_time: max time to wait, in seconds
     :type max_wait_time: integer
     """
-    LOGGER.info('%s: wait for SSHD...', instance4log(instance_name))
+    LOGGER.info(u'%s: wait for SSHD…', instance4log(instance_name))
     start_time = time.time()
     deadline = start_time + max_wait_time
     while True:
@@ -502,7 +502,7 @@ def cmd(command, log_path = None):
     :type log_path: string or NoneType
     :rtype: boolean
     """
-    LOGGER.debug('spawning command: %r...', command)
+    LOGGER.debug(u'spawning command: %r…', command)
     if log_path is None:
         proc = subprocess.Popen(
             command, stdout = subprocess.PIPE,
@@ -562,7 +562,7 @@ def main():
     # setup termination hook
     atexit.register(terminate_all)
     atexit.register(pause_if_requested)
-    LOGGER.info('MAIN> start instances...')
+    LOGGER.info(u'MAIN> start instances…')
     threads = []
     for instance_name in INSTANCES:
         args = INSTANCES[instance_name]
@@ -578,10 +578,10 @@ def main():
                     args['ssh_key_name'], args['disk_size']])
         thread.start()
         threads.append(thread)
-    LOGGER.info('MAIN> wait for the threads...')
+    LOGGER.info(u'MAIN> wait for the threads…')
     for thread in threads:
         thread.join()
-    LOGGER.info('MAIN> check launch results...')
+    LOGGER.info(u'MAIN> check launch results…')
     # Check error statuses for each configured instance
     error_occured = False
     for instance_name in INSTANCES:
@@ -625,13 +625,13 @@ def main():
     # launch super script if defined
     if config['super_script'] is not None:
         LOGGER.info(
-            'MAIN> substituting macros in %r...',
+            u'MAIN> substituting macros in %r…',
             config['super_script'])
         new_super_script = config['super_script'] + '.substituted'
         substitute_macros(
             config['super_script'], new_super_script,
             config['ssh_config'])
-        LOGGER.info('MAIN> running super script %r...', new_super_script)
+        LOGGER.info(u'MAIN> running super script %r…', new_super_script)
         if cmd([new_super_script], config['super_log']):
             LOGGER.info('MAIN> super script %r done', new_super_script)
         else:
@@ -659,7 +659,7 @@ def save_instance_ids(path):
         [INSTANCES[instance_name]['instance_id']
          for instance_name in INSTANCES
          if 'instance_id' in INSTANCES[instance_name]]
-    LOGGER.info('writing instance IDs into %s file...', path)
+    LOGGER.info(u'writing instance IDs into %s file…', path)
     with open(path, 'w') as fdescr:
         fdescr.write('%s\n' % '\n'.join(instance_ids))
     LOGGER.info('instance IDs written to %s file', path)
@@ -683,7 +683,7 @@ def generate_ssh_config(ssh_config, generated_ssh_config):
     if generated_ssh_config is None:
         # nothing to do
         return
-    LOGGER.info('generating a new SSH config at %r...',
+    LOGGER.info(u'generating a new SSH config at %r…',
                 generated_ssh_config)
     # Read the contents of the main SSH config
     ssh_config_contents = ''
@@ -822,7 +822,7 @@ def parse_config_file(config_path):
     if not VARS['REGION_NAME']:
         LOGGER.error('Mandatory Region Name is not defined')
         sys.exit(1)
-    LOGGER.debug('MAIN> parse the rest of the configuration file...')
+    LOGGER.debug(u'MAIN> parse the rest of the configuration file…')
     env_image_id = os.environ.get('IMAGE_ID')
     env_subnet_id = os.environ.get('SUBNET_ID')
     for section in cfg.sections():
