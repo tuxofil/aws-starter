@@ -1,3 +1,9 @@
+aws-starter (0.15.2) unstable; urgency=low
+
+  * proper handle non-existent AMI error
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Mon, 22 Feb 2016 14:58:20 +0200
+
 aws-starter (0.15.1) unstable; urgency=low
 
   * logging: replace dots with ellipsis
