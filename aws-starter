@@ -166,11 +166,12 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     nice_disk_size = 'default'
     if disk_size is not None:
         nice_disk_size = '%dGB' % disk_size
-    LOGGER.debug(
+    LOGGER.info(
         u'%s: launching %s from AMI %s in %s'
-        u' (with subnet %s and %s disk size)…',
+        u' (%s; disk size %s of type %r with IOPS %r)…',
         instance_name, instance_type, image_id,
-        VARS['REGION_NAME'], subnet_id, nice_disk_size)
+        VARS['REGION_NAME'], subnet_id, nice_disk_size,
+        disk_type, disk_iops)
     image_obj = connection.get_image(image_id)
     if image_obj is None:
         LOGGER.error('no such AMI: %s', image_id)
