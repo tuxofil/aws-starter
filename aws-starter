@@ -98,7 +98,7 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
            max_wait_time, upload_file = None, upload_dir = None,
            script = None, script_log = None,
            ssh_config = None, private_ip = None, ssh_key_name = None,
-           disk_size = None):
+           disk_size = None, disk_type = None, disk_iops = None):
     """
     Launch a new instance.
     On success return tuple of an instance ID and instance public IP.
@@ -140,6 +140,10 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     :type ssh_key_name: string or NoneType
     :param disk_size: root FS disk size, in gigabytes.
     :type disk_size: integer or NoneType
+    :param disk_type: hard disk type
+    :type disk_type: one of 'standard', 'io1', 'gp2' or NoneType
+    :param disk_iops: IOPS that the volume supports
+    :type disk_iops: integer or NoneType
     :rtype: (string, string) or NoneType
     """
     connection = connect()
@@ -156,14 +160,15 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
         LOGGER.error('no such AMI: %s', image_id)
         raise InstanceLaunchError
     image_bdm = image_obj.block_device_mapping
-    bdm = None
-    if disk_size is not None:
-        bdt = boto.ec2.blockdevicemapping.BlockDeviceType()
-        bdt.size = disk_size
-        bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
-        bdm[image_bdm.keys()[0]] = bdt
-    else:
-        nice_disk_size = '%dGB (default)' % image_bdm[image_bdm.keys()[0]].size
+    default_disk_size = image_bdm[image_bdm.keys()[0]].size
+    bdt = boto.ec2.blockdevicemapping.BlockDeviceType()
+    bdt.size = default_disk_size if disk_size is None else disk_size
+    bdt.volume_type = disk_type
+    bdt.iops = disk_iops
+    bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
+    bdm[image_bdm.keys()[0]] = bdt
+    if disk_size is None:
+        nice_disk_size = '%dGB (default)' % default_disk_size
     reservation = connection.run_instances(
         image_id = image_id,
         key_name = ssh_key_name,
@@ -579,7 +584,8 @@ def main():
                     args['upload_dir'], args['script'],
                     args['script_log'], args['ssh_config'],
                     args['requested_private_ip'],
-                    args['ssh_key_name'], args['disk_size']])
+                    args['ssh_key_name'], args['disk_size'],
+                    args['disk_type'], args['disk_iops']])
         thread.start()
         threads.append(thread)
     LOGGER.info(u'MAIN> wait for the threads…')
@@ -855,6 +861,33 @@ def parse_config_file(config_path):
             if disk_size < 1:
                 LOGGER.error('%s: invalid disk size: %r', section, disk_size)
                 sys.exit(1)
+        disk_type = getcfg(cfg, section, 'disk_type', 'disk_type',
+                           default='standard')
+        if disk_type not in ('standard', 'io1', 'gp2'):
+            LOGGER.error('%s: invalid disk type: %r', section, disk_type)
+            sys.exit(1)
+        disk_iops = getcfg(cfg, section, 'disk_iops', 'disk_iops')
+        if disk_iops is not None:
+            disk_iops = int(disk_iops)
+            # Valid ranges for iops are described in:
+            # http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_EbsBlockDevice.html
+            if disk_type == 'io1':
+                if not (100 <= disk_iops <= 20000):
+                    LOGGER.error(
+                        '%s: disk_iops %r is out of range.'
+                        ' Valid range for %r is 100..20000',
+                        section, disk_iops, disk_type)
+                    sys.exit(1)
+            elif disk_type == 'gp2':
+                if not (3 <= disk_iops <= 10000):
+                    LOGGER.error(
+                        '%s: disk_iops %r is out of range.'
+                        ' Valid range for %r is 3..10000',
+                        section, disk_iops, disk_type)
+                    sys.exit(1)
+        elif disk_type == 'io1':
+            LOGGER.error('%s: disk_iops is mandatory for io1 disk type', section)
+            sys.exit(1)
         ssh_key_name = getcfg(cfg, section, 'ssh_key_name', 'ssh_key_name')
         private_ip = getcfg(cfg, section, 'private_ip')
         max_wait_time = \
@@ -873,7 +906,9 @@ def parse_config_file(config_path):
              'ssh_config': getcfg(cfg, 'main', 'ssh_config'),
              'requested_private_ip': private_ip,
              'ssh_key_name': ssh_key_name,
-             'disk_size': disk_size}
+             'disk_size': disk_size,
+             'disk_type': disk_type,
+             'disk_iops': disk_iops}
     return {
         'instance_ids_path': getcfg(cfg, 'main', 'instance_ids_path'),
         'super_script': getcfg(cfg, 'main', 'super_script'),
