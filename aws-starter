@@ -67,9 +67,9 @@ def connect():
             break
     # connect to Amazon AWS API
     connection = boto.connect_ec2(
-        aws_access_key_id = VARS['ACCESS_KEY_ID'],
-        aws_secret_access_key = VARS['SECRET_ACCESS_KEY'],
-        region = region_info)
+        aws_access_key_id=VARS['ACCESS_KEY_ID'],
+        aws_secret_access_key=VARS['SECRET_ACCESS_KEY'],
+        region=region_info)
     LOGGER.debug('connected')
     return connection
 
@@ -95,10 +95,10 @@ def launch_catched(*args):
 
 
 def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
-           max_wait_time, upload_file = None, upload_dir = None,
-           script = None, script_log = None,
-           ssh_config = None, private_ip = None, ssh_key_name = None,
-           disk_size = None, disk_type = None, disk_iops = None):
+           max_wait_time, upload_file=None, upload_dir=None,
+           script=None, script_log=None,
+           ssh_config=None, private_ip=None, ssh_key_name=None,
+           disk_size=None, disk_type=None, disk_iops=None):
     """
     Launch a new instance.
     On success return tuple of an instance ID and instance public IP.
@@ -186,14 +186,14 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     if disk_size is None:
         nice_disk_size = '%dGB (default)' % default_disk_size
     reservation = connection.run_instances(
-        image_id = image_id,
-        key_name = ssh_key_name,
-        instance_type = instance_type,
-        block_device_map = bdm,
-        subnet_id = subnet_id,
-        private_ip_address = private_ip,
-        instance_initiated_shutdown_behavior = 'terminate',
-        tenancy = 'dedicated' if is_dedicated else 'default')
+        image_id=image_id,
+        key_name=ssh_key_name,
+        instance_type=instance_type,
+        block_device_map=bdm,
+        subnet_id=subnet_id,
+        private_ip_address=private_ip,
+        instance_initiated_shutdown_behavior='terminate',
+        tenancy='dedicated' if is_dedicated else 'default')
     instance = reservation.instances[0]
     INSTANCES[instance_name]['instance_id'] = instance.id
     LOGGER.info(
@@ -235,7 +235,7 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     if upload_dir is not None:
         LOGGER.info(u'%s: uploading dir %r…', instance_name, upload_dir)
         if not scp(upload_dir, instance_ip + ':',
-                   script_log, ssh_config, recursive = True):
+                   script_log, ssh_config, recursive=True):
             LOGGER.error(
                 '%s: failed to upload dir %r',
                 instance4log(instance_name), upload_dir)
@@ -385,7 +385,7 @@ def ping_tcp(host, port):
     :rtype: boolean
     """
     try:
-        sock = socket.socket(type = socket.SOCK_STREAM)
+        sock = socket.socket(type=socket.SOCK_STREAM)
         sock.settimeout(1)
         sock.connect((host, port))
         sock.close()
@@ -446,8 +446,8 @@ def terminate_all():
         sys.exit(1)
 
 
-def execute_script_remotely(host, script_path, script_log = None,
-                            ssh_config = None):
+def execute_script_remotely(host, script_path, script_log=None,
+                            ssh_config=None):
     """
     Upload local script to a remote SSH server and run
     the script on the remote side.
@@ -476,7 +476,7 @@ def execute_script_remotely(host, script_path, script_log = None,
     return ssh(host, ['./' + basename], script_log, ssh_config)
 
 
-def ssh(host, command, script_log = None, ssh_config = None):
+def ssh(host, command, script_log=None, ssh_config=None):
     """
     Invocate external command on a remote server via SSH.
     Return True if subprocess exited with 0 exit code and False otherwise.
@@ -503,8 +503,8 @@ def ssh(host, command, script_log = None, ssh_config = None):
 
 
 def scp(source_path, destination_path,
-        script_log = None, ssh_config = None,
-        recursive = False):
+        script_log=None, ssh_config=None,
+        recursive=False):
     """
     Invocate SCP process.
     Return True if subprocess exited with 0 exit code and False otherwise.
@@ -535,7 +535,7 @@ def scp(source_path, destination_path,
     return cmd(final_command + [source_path, destination_path], script_log)
 
 
-def cmd(command, log_path = None):
+def cmd(command, log_path=None):
     """
     Run external process.
     Return True if subprocess exited with 0 exit code and False otherwise.
@@ -552,10 +552,10 @@ def cmd(command, log_path = None):
     LOGGER.debug(u'spawning command: %r…', command)
     if log_path is None:
         proc = subprocess.Popen(
-            command, stdout = subprocess.PIPE,
-            stderr = subprocess.PIPE,
-            env = {'LC_ALL': 'C'},
-            close_fds = True)
+            command, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            env={'LC_ALL': 'C'},
+            close_fds=True)
         (stdout_data, stderr_data) = proc.communicate()
         if stdout_data:
             for line in stdout_data.rstrip().split('\n'):
@@ -566,8 +566,8 @@ def cmd(command, log_path = None):
     else:
         with open(log_path, 'a') as fdescr:
             proc = subprocess.Popen(
-                command, stdout = fdescr, stderr = fdescr,
-                env = {'LC_ALL': 'C'}, close_fds = True)
+                command, stdout=fdescr, stderr=fdescr,
+                env={'LC_ALL': 'C'}, close_fds=True)
             _data = proc.communicate()
     retcode = proc.wait()
     if retcode == 0:
@@ -595,9 +595,9 @@ def main():
         'info': 20,
         'debug': 10}
     logging.basicConfig(
-        format = '%(asctime)s %(name)s %(levelname)1.1s %(message)s',
-        datefmt = '%Y-%m-%d %H:%M:%S',
-        level = verbosities.get(cmd_args.verbosity, 20))
+        format='%(asctime)s %(name)s %(levelname)1.1s %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        level=verbosities.get(cmd_args.verbosity, 20))
     # read the configuration file
     config = parse_config_file(cmd_args.config_path)
     if cmd_args.stop:
@@ -614,16 +614,16 @@ def main():
     for instance_name in INSTANCES:
         args = INSTANCES[instance_name]
         thread = threading.Thread(
-            target = launch_catched,
-            args = [instance_name, args['instance_type'],
-                    args['is_dedicated'],
-                    args['image_id'], args['subnet_id'],
-                    args['max_wait_time'], args['upload_file'],
-                    args['upload_dir'], args['script'],
-                    args['script_log'], args['ssh_config'],
-                    args['requested_private_ip'],
-                    args['ssh_key_name'], args['disk_size'],
-                    args['disk_type'], args['disk_iops']])
+            target=launch_catched,
+            args=[instance_name, args['instance_type'],
+                  args['is_dedicated'],
+                  args['image_id'], args['subnet_id'],
+                  args['max_wait_time'], args['upload_file'],
+                  args['upload_dir'], args['script'],
+                  args['script_log'], args['ssh_config'],
+                  args['requested_private_ip'],
+                  args['ssh_key_name'], args['disk_size'],
+                  args['disk_type'], args['disk_iops']])
         thread.start()
         threads.append(thread)
     LOGGER.info(u'MAIN> wait for the threads…')
@@ -800,43 +800,43 @@ def parse_cmd_args():
     :rtype: object
     """
     parser = argparse.ArgumentParser(
-        description = 'Do some work with Amazon instances.')
+        description='Do some work with Amazon instances.')
     parser.add_argument(
         '-p', '--pause',
-        action = 'store_true',
-        help = 'wait until user press the ENTER key after the super'
+        action='store_true',
+        help='wait until user press the ENTER key after the super'
         ' script and before termination of the instances.'
         ' In case of an error no pause will be made.')
     parser.add_argument(
         '--pause-on-error',
-        action = 'store_true',
-        help = 'wait until user press the ENTER key before'
+        action='store_true',
+        help='wait until user press the ENTER key before'
         ' termination of the instances when an error occurs.')
     parser.add_argument(
         '--no-terminate',
-        action = 'store_true',
-        help = 'do not terminate the instances after the work is'
+        action='store_true',
+        help='do not terminate the instances after the work is'
         ' done. The instances WILL be terminated when an error occurs.')
     parser.add_argument(
         '--no-terminate-on-error',
-        action = 'store_true',
-        help = 'do not terminate the instances after an error has'
+        action='store_true',
+        help='do not terminate the instances after an error has'
         ' been occured. This is useful to make able the user to'
         ' investigate the problem on the instances.')
     parser.add_argument(
         '--stop',
-        action = 'store_true',
-        help = 'do not start any instances, just read instance IDs'
+        action='store_true',
+        help='do not start any instances, just read instance IDs'
         ' from the file defined in the "instance_ids_path" configuration'
         ' option, terminate them all and exit immediately.')
     parser.add_argument(
         '-v', '--verbosity',
-        default = 'warn',
-        help = 'verbosity level. Default is "info". Possible'
+        default='warn',
+        help='verbosity level. Default is "info". Possible'
         ' values are: "debug", "info", "warning", "error", "critical".')
     parser.add_argument(
         'config_path',
-        help = 'path to configuration file')
+        help='path to configuration file')
     return parser.parse_args()
 
 
@@ -854,19 +854,19 @@ def parse_config_file(config_path):
     cfg.read(config_path)
     VARS['ACCESS_KEY_ID'] = \
         getcfg(cfg, 'main', 'access_key_id',
-               default = os.environ.get('ACCESS_KEY_ID'))
+               default=os.environ.get('ACCESS_KEY_ID'))
     if not VARS['ACCESS_KEY_ID']:
         LOGGER.error('Mandatory Access Key ID is not defined')
         sys.exit(1)
     VARS['SECRET_ACCESS_KEY'] = \
         getcfg(cfg, 'main', 'secret_access_key',
-               default = os.environ.get('SECRET_ACCESS_KEY'))
+               default=os.environ.get('SECRET_ACCESS_KEY'))
     if not VARS['SECRET_ACCESS_KEY']:
         LOGGER.error('Mandatory Secret Access Key is not defined')
         sys.exit(1)
     VARS['REGION_NAME'] = \
         getcfg(cfg, 'main', 'region',
-               default = os.environ.get('REGION'))
+               default=os.environ.get('REGION'))
     if not VARS['REGION_NAME']:
         LOGGER.error('Mandatory Region Name is not defined')
         sys.exit(1)
@@ -878,13 +878,13 @@ def parse_config_file(config_path):
             continue
         instance_type = \
             getcfg(cfg, section, 'instance_type', 'instance_type',
-                   default = 't1.micro')
+                   default='t1.micro')
         is_dedicated = getcfg(cfg, section, 'is_dedicated', 'is_dedicated', 'no')
         is_dedicated = str_to_boolean(is_dedicated)
         image_id = getcfg(cfg, section, 'image_id', 'image_id',
-                          default = env_image_id)
+                          default=env_image_id)
         subnet_id = getcfg(cfg, section, 'subnet_id', 'subnet_id',
-                           default = env_subnet_id)
+                           default=env_subnet_id)
         if not image_id:
             LOGGER.error(
                 '%s: mandatory Image ID is not set', section)
@@ -930,7 +930,7 @@ def parse_config_file(config_path):
         private_ip = getcfg(cfg, section, 'private_ip')
         max_wait_time = \
             int(getcfg(cfg, section, 'max_wait_time', 'max_wait_time',
-                       default = '120'))
+                       default='120'))
         INSTANCES[section] = \
             {'instance_type': instance_type,
              'is_dedicated': is_dedicated,
@@ -955,7 +955,7 @@ def parse_config_file(config_path):
         'generated_ssh_config': getcfg(cfg, 'main', 'generated_ssh_config')}
 
 
-def getcfg(cfg, section, item, main_item = None, default = None):
+def getcfg(cfg, section, item, main_item=None, default=None):
     """
     Return a value for configuration item from the config file.
     If main_item arg is defined, a corresponding item in the
@@ -985,7 +985,7 @@ def getcfg(cfg, section, item, main_item = None, default = None):
         return cfg.get(section, item)
     except ConfigParser.NoOptionError:
         if main_item is not None:
-            return getcfg(cfg, 'main', item, default = default)
+            return getcfg(cfg, 'main', item, default=default)
         return default
 
 
