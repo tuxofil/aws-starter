@@ -1,3 +1,13 @@
+aws-starter (0.16.0) unstable; urgency=low
+
+  * improve logging: print instance properties before launch
+  * style fix: satisfy pylint
+  * pep8: remove extra spaces near named args
+  * style fix: separate arg descriptions in docstrs with NL
+  * introduce disk_type and disk_iops configuration options
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Mon, 22 Feb 2016 17:32:38 +0200
+
 aws-starter (0.15.2) unstable; urgency=low
 
   * proper handle non-existent AMI error
