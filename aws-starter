@@ -151,7 +151,11 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
         u' (with subnet %s and %s disk size)…',
         instance_name, instance_type, image_id,
         VARS['REGION_NAME'], subnet_id, nice_disk_size)
-    image_bdm = connection.get_image(image_id).block_device_mapping
+    image_obj = connection.get_image(image_id)
+    if image_obj is None:
+        LOGGER.error('no such AMI: %s', image_id)
+        raise InstanceLaunchError
+    image_bdm = image_obj.block_device_mapping
     bdm = None
     if disk_size is not None:
         bdt = boto.ec2.blockdevicemapping.BlockDeviceType()
