@@ -106,44 +106,60 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
 
     :param instance_name: instance name in the configuration file
     :type instance_name: string
+
     :param instance_type: Amazon instance type to launch
     :type instance_type: string
+
     :param is_dedicated: will instance be dedicated or not.
     :type is_dedicated: boolean
+
     :param image_id: base AMI ID to launch instance from
     :type image_id: string
+
     :param subnet_id: Amazon Subnet ID to associate with the instance
     :type subnet_id: string
+
     :param max_wait_time: max time (in seconds) to wait for
         instance to start.
     :type max_wait_time: integer
+
     :param upload_file: Path to a local file which will be uploaded
         to the instance immediately after instance start and before
         the first-start script execution.
     :type upload_file: string or NoneType
+
     :param upload_dir: Path to a local directory which will be uploaded
         to the instance immediately after instance start and before
         the first-start script execution.
     :type upload_dir: string or NoneType
+
     :param script: path to script to run on the instance after
         the very first start
     :type script: string or NoneType
+
     :param script_log: path to file which will be used to redirect
         all the output of the script.
     :type script_log: string or NoneType
+
     :param ssh_config: path to SSH config file
     :type ssh_config: string or NoneType
+
     :param private_ip: private IP to assign with the instance.
     :type private_ip: string or NoneType
+
     :param ssh_key_name: name of the SSH key on the Amazon side
         to access to the instance.
     :type ssh_key_name: string or NoneType
+
     :param disk_size: root FS disk size, in gigabytes.
     :type disk_size: integer or NoneType
+
     :param disk_type: hard disk type
     :type disk_type: one of 'standard', 'io1', 'gp2' or NoneType
+
     :param disk_iops: IOPS that the volume supports
     :type disk_iops: integer or NoneType
+
     :rtype: (string, string) or NoneType
     """
     connection = connect()
@@ -253,6 +269,7 @@ def wait_for_sshd(instance_name, max_wait_time):
 
     :param instance_name: instance name (from config file)
     :type instance_name: string
+
     :param max_wait_time: max time to wait, in seconds
     :type max_wait_time: integer
     """
@@ -278,6 +295,7 @@ def instance4log(instance_name):
 
     :param instance_name: instance name (from config file)
     :type instance_name: string
+
     :rtype: string
     """
     return '%s (id=%s, ip=%s, priv_ip=%s)' % \
@@ -293,6 +311,7 @@ def wait_for_instance(instance, max_wait_time):
 
     :param instance: Amazon instance object
     :type instance: instance of boto.ec2.Instance
+
     :param max_wait_time: max time to wait, in seconds
     :type max_wait_time: integer
 
@@ -315,8 +334,10 @@ def map_instance_to_ip_addrs(connection, instance_name, instance_id):
 
     :param connection: connection to Amazon AWS API
     :type connection: instance of boto.ec2.Connection
+
     :param instance_name: name of the instance (from config file)
     :type instance_name: string
+
     :param instance_id: Amazon instance ID
     :type instance_id: string
     """
@@ -357,8 +378,10 @@ def ping_tcp(host, port):
 
     :param host: hostname or IP address of the remote TCP server.
     :type host: string
+
     :param port: TCP port number of the remote server.
     :type port: integer
+
     :rtype: boolean
     """
     try:
@@ -432,13 +455,17 @@ def execute_script_remotely(host, script_path, script_log = None,
 
     :param host: remote server hostname or IP address
     :type host: string
+
     :param script_path: path to file with the target script
     :type script_path: string
+
     :param script_log: path to file which will be used to redirect
         all the output of the target script.
     :type script_log: string or NoneType
+
     :param ssh_config: path to SSH config file
     :type ssh_config: string or NoneType
+
     :rtype: boolean
     """
     if not scp(script_path, host + ':', script_log, ssh_config):
@@ -456,13 +483,17 @@ def ssh(host, command, script_log = None, ssh_config = None):
 
     :param host: remote server hostname or IP address
     :type host: string
+
     :param command: command to execute on the remote side
     :type command: list of strings
+
     :param script_log: path to file which will be used to redirect
         all the output of the target script.
     :type script_log: string or NoneType
+
     :param ssh_config: path to SSH config file
     :type ssh_config: string or NoneType
+
     :rtype: boolean
     """
     final_command = ['ssh']
@@ -480,15 +511,20 @@ def scp(source_path, destination_path,
 
     :param source_path: path to source file
     :type source_path: string
+
     :param destination_path: path to destination file
     :type destination_path: string
+
     :param script_log: path to file which will be used to redirect
         all the output of the target script.
     :type script_log: string or NoneType
+
     :param ssh_config: path to SSH config file
     :type ssh_config: string or NoneType
+
     :param recursive: use '-r' command line option or not.
     :type recursive: boolean. Default is False.
+
     :rtype: boolean
     """
     final_command = ['scp']
@@ -506,9 +542,11 @@ def cmd(command, log_path = None):
 
     :param command: command line
     :type command: list of strings
+
     :param log_path: path to logfile to which all stdout and stderr
         will be redirected
     :type log_path: string or NoneType
+
     :rtype: boolean
     """
     LOGGER.debug(u'spawning command: %r…', command)
@@ -928,14 +966,19 @@ def getcfg(cfg, section, item, main_item = None, default = None):
 
     :param cfg: config object
     :type cfg: instance of ConfigParser
+
     :param section: config section name
     :type section: string
+
     :param item: section item name
     :type item: string
+
     :param main_item: item in the 'main' section
     :type main_item: string or NoneType
+
     :param default: default value for the item
     :type default: string or NoneType
+
     :rtype: string or None
     """
     try:
@@ -974,8 +1017,10 @@ def substitute_macros(infile, outfile, ssh_config):
 
     :param infile: path to super script template.
     :type infile: string
+
     :param outfile: path to final super script.
     :type outfile: string
+
     :param ssh_config: path to SSH config.
     :type ssh_config: string or NoneType
     """
