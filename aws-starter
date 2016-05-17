@@ -182,6 +182,7 @@ def launch(instance_name, instance_type, is_dedicated, image_id, subnet_id,
     bdt.size = default_disk_size if disk_size is None else disk_size
     bdt.volume_type = disk_type
     bdt.iops = disk_iops
+    bdt.delete_on_termination = True
     bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
     bdm[image_bdm.keys()[0]] = bdt
     if disk_size is None:
