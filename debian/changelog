@@ -1,3 +1,9 @@
+aws-starter (0.16.1) unstable; urgency=low
+
+  * autoremove volume on instance termination
+
+ -- Aleksey Morarash <aleksey.morarash@gmail.com>  Tue, 17 May 2016 18:52:29 +0300
+
 aws-starter (0.16.0) unstable; urgency=low
 
   * improve logging: print instance properties before launch
